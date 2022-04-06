@@ -1,8 +1,7 @@
 {
-  "name": "aws-ffmpeg-layer",
-  "description": "",
-  "version": "0.1.0",
-  "dependencies": {},
+  "name": "antivirus-lambda",
+  "version": "1.0.0",
+  "description": "A ClamAV Lambda Layer built with Docker and managed with Serverless",
   "devDependencies": {
     "aws-sdk": "^2.964.0",
     "jest": "^27.0.6"
