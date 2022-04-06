@@ -20,8 +20,6 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_LIVE }}
-          role-external-id: ${{ secrets.AWS_ROLE_EXTERNAL_ID }}
           # One hour (sometimes things can take a while)
           role-duration-seconds: 3600
           # With this the session doesn't need to be tagged
