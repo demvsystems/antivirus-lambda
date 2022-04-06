@@ -17,7 +17,7 @@ provider:
 functions:
   virusScan:
     image:
-      name: clambdaAv
+      name: antivirus-lambda
     memorySize: 2048
     events:
       - s3: 
