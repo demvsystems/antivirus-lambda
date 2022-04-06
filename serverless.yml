@@ -5,7 +5,7 @@ provider:
   runtime: nodejs14.x
   ecr:
     images:
-      clambdaAv:
+      antivirus-lambda:
         path: ./
   iamRoleStatements:
     - Effect: Allow
