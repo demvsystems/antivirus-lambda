@@ -3,10 +3,13 @@ service: clambda-av
 provider:
   name: aws
   runtime: nodejs14.x
+  region: eu-central-1
+
   ecr:
     images:
-      antivirus-lambda:
+      clambda-av:
         path: ./
+        
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -17,7 +20,7 @@ provider:
 functions:
   virusScan:
     image:
-      name: antivirus-lambda
+      name: clambda-av
     memorySize: 2048
     events:
       - s3: 
