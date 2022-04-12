@@ -1,8 +1,8 @@
 const { execSync } = require("child_process");
 const { writeFileSync, unlinkSync } = require("fs");
-const AWS = require("aws-sdk");
+const S3 = require("aws-sdk/clients/s3");
 
-const s3 = new AWS.S3();
+const s3 = new S3();
 
 /**
  * @type {AWSLambda.S3Handler}
