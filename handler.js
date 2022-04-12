@@ -4,6 +4,9 @@ const AWS = require("aws-sdk");
 
 const s3 = new AWS.S3();
 
+/**
+ * @type {AWSLambda.S3Handler}
+ */
 module.exports.virusScan = async (event, context) => {
   if (!event.Records) {
     console.log("Not an S3 event invocation!");
@@ -26,8 +29,8 @@ module.exports.virusScan = async (event, context) => {
 
     // write file to disk
     writeFileSync(`/tmp/${record.s3.object.key}`, s3Object.Body);
-    
-    try { 
+
+    try {
       // scan it
       execSync(`./bin/clamscan --database=./var/lib/clamav /tmp/${record.s3.object.key}`, { stdio: "inherit" });
 
@@ -42,7 +45,7 @@ module.exports.virusScan = async (event, context) => {
               {
                 Key: 'av-status',
                 Value: 'clean'
-              }
+              },
             ]
           }
         })

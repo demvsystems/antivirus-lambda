@@ -1,6 +1,7 @@
 {
   "name": "antivirus-lambda",
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.93",
     "aws-sdk": "^2.964.0",
     "jest": "^27.0.6",
     "serverless-plugin-warmup": "^7.1.0",
