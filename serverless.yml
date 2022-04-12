@@ -1,30 +1,40 @@
 service: clambda-av
 
+plugins:
+  - serverless-plugin-warmup
+  - serverless-prune-plugin
+
+custom:
+  warmup:
+    testWarmer:
+      enabled: true
+  prune:
+    automatic: true
+    number: 3
+
 provider:
   name: aws
   runtime: nodejs14.x
   region: eu-central-1
-
   ecr:
     images:
       clambda-av:
         path: ./
-        
   iamRoleStatements:
     - Effect: Allow
       Action:
         - s3:GetObject
         - s3:PutObjectTagging
-      Resource: "arn:aws:s3:::clambda-av-files/*"
+      Resource: "arn:aws:s3:::clambda-av-files-demv/*"
 
 functions:
   virusScan:
     image:
       name: clambda-av
-    memorySize: 2048
+    memorySize: 4096
     events:
       - s3: 
-          bucket: clambda-av-files
+          bucket: clambda-av-files-demv
           event: s3:ObjectCreated:*
     timeout: 120
 

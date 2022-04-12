@@ -1,14 +1,12 @@
 {
   "name": "antivirus-lambda",
-  "version": "1.0.0",
-  "description": "A ClamAV Lambda Layer built with Docker and managed with Serverless",
   "devDependencies": {
     "aws-sdk": "^2.964.0",
-    "jest": "^27.0.6"
+    "jest": "^27.0.6",
+    "serverless-plugin-warmup": "^7.1.0",
+    "serverless-prune-plugin": "^2.0.1"
   },
   "scripts": {
-    "build": "./build.sh",
-    "deploy": "sls deploy",
     "test": "jest handler.test.js"
   }
 }
