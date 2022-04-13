@@ -1,16 +1,20 @@
-const { execSync } = require("child_process");
-const { writeFileSync, unlinkSync, mkdirSync, readdirSync, readFileSync } = require('fs');
-const S3 = require("aws-sdk/clients/s3");
+/* eslint-disable no-console */
+/* eslint-disable no-restricted-syntax */
+import S3 from 'aws-sdk/clients/s3';
+import { execSync } from 'child_process';
+import {
+  mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync,
+} from 'fs';
 
 const s3 = new S3();
 
 /**
  * @type {AWSLambda.S3Handler}
 */
-async function scan(event, context) {
+async function scan(event, _context) {
   for (const record of event.Records) {
     if (!record.s3) {
-      console.log("Not an S3 Record!");
+      console.log('Not an S3 Record!');
       continue;
     }
 
@@ -18,7 +22,7 @@ async function scan(event, context) {
     const s3Object = await s3
       .getObject({
         Bucket: record.s3.bucket.name,
-        Key: record.s3.object.key
+        Key: record.s3.object.key,
       })
       .promise();
 
@@ -29,7 +33,7 @@ async function scan(event, context) {
 
     try {
       // scan it
-      execSync(`./bin/clamscan --database=./var/lib/clamav /tmp/${record.s3.object.key}`, { stdio: "inherit" });
+      execSync(`./bin/clamscan --database=./var/lib/clamav /tmp/${record.s3.object.key}`, { stdio: 'inherit' });
 
       console.log(`File ${record.s3.object.key} clean!`);
 
@@ -41,14 +45,14 @@ async function scan(event, context) {
             TagSet: [
               {
                 Key: 'av-status',
-                Value: 'clean'
+                Value: 'clean',
               },
-            ]
-          }
+            ],
+          },
         })
         .promise();
-    } catch(err) {
-      if (err.status === 1) {
+    } catch (error) {
+      if (error.status === 1) {
         console.log(`File ${record.s3.object.key} dirty!`);
 
         // tag as dirty, OR you can delete it
@@ -60,10 +64,10 @@ async function scan(event, context) {
               TagSet: [
                 {
                   Key: 'av-status',
-                  Value: 'dirty'
-                }
-              ]
-            }
+                  Value: 'dirty',
+                },
+              ],
+            },
           })
           .promise();
       }
@@ -72,58 +76,56 @@ async function scan(event, context) {
     // delete the temp file
     unlinkSync(`/tmp/${record.s3.object.key}`);
   }
-};
+}
 
 async function getDefinitions(event, context) {
-  const defsDir = '/tmp/defs'
+  const defsDir = '/tmp/defs';
 
-  mkdirSync(defsDir, { recursive: true })
-
-
+  mkdirSync(defsDir, { recursive: true });
 }
 
 /**
  * @type {AWSLambda.ScheduledHandler}
  */
 async function updateDefinitions(event, context) {
-  const defsDir = '/tmp/defs'
+  const defsDir = '/tmp/defs';
 
-  mkdirSync(defsDir, { recursive: true })
+  mkdirSync(defsDir, { recursive: true });
 
   try {
-    execSync(`./bin/freshclam --config-file=bin/freshclam.conf --datadir=${defsDir}`,
+    execSync(
+      `./bin/freshclam --config-file=bin/freshclam.conf --datadir=${defsDir}`,
       {
-        stdio: "inherit",
+        stdio: 'inherit',
         env: {
-          LD_LIBRARY_PATH: './lib'
-        }
-      }
+          LD_LIBRARY_PATH: './lib',
+        },
+      },
     );
 
-    const files = readdirSync(defsDir).map(file => ({name: file, content: readFileSync(`${defsDir}/${file}`)}))
+    const files = readdirSync(defsDir).map((file) => ({ name: file, content: readFileSync(`${defsDir}/${file}`) }));
 
     await Promise.all(
       files.map(
-        file => s3.putObject({Bucket: 'clambda-av-definitions-demv', Key: file.name, Body: file.content}).promise()
-      )
+        (file) => s3.putObject({ Bucket: 'clambda-av-definitions-demv', Key: file.name, Body: file.content }).promise(),
+      ),
     );
   } catch (error) {
-    console.error("Fetching new virus definitions failed!" + error);
-    unlinkSync(defsDir)
-    return;
+    console.error(`Fetching new virus definitions failed!${error}`);
+    unlinkSync(defsDir);
   }
 
   // TODO
   // 1. iterate over the downloaded definitions
   // 2. upload them to a s3 instance
   // 3. remove temp folder
-};
+}
 
 /**
  * @type {AWSLambda.Handler<AWSLambda.S3Event | AWSLambda.ScheduledEvent>}
  */
 module.exports.virusScan = function (event, context) {
-  console.log('event: ', event, 'content: ', context);
+  console.log('event:', event, 'content:', context);
   // If not a S3 event either keep lamda warm or update the definitions
   if (!event.Records) {
     if (event.detail === 'warmer') {
@@ -141,4 +143,4 @@ module.exports.virusScan = function (event, context) {
     updateDefinitions(event, context, null);
     scan(event, context, null);
   }
-}
+};
