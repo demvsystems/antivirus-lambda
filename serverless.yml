@@ -12,6 +12,13 @@ custom:
     automatic: true
     number: 3
 
+resources:
+  Resources:
+    Definitions:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: clambda-av-definitions-demv
+
 provider:
   name: aws
   runtime: nodejs14.x
@@ -26,6 +33,11 @@ provider:
         - s3:GetObject
         - s3:PutObjectTagging
       Resource: "arn:aws:s3:::clambda-av-files-demv/*"
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource: "arn:aws:s3:::clambda-av-definitions-demv/*"
 
 functions:
   virusScan:
