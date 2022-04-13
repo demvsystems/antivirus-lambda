@@ -1,21 +1,22 @@
-const { execSync } = require("child_process");
-const { writeFileSync, unlinkSync } = require("fs");
-const S3 = require("aws-sdk/clients/s3");
+// const S3 = require("aws-sdk/clients/s3");
+import { S3 } from 'aws-sdk';
+import { execSync } from 'child_process';
+import { unlinkSync, writeFileSync } from 'fs';
 
 const s3 = new S3();
 
 /**
  * @type {AWSLambda.S3Handler}
  */
-module.exports.virusScan = async (event, context) => {
+module.exports.virusScan = async (event) => {
   if (!event.Records) {
-    console.log("Not an S3 event invocation!");
+    console.log('Not an S3 event invocation!');
     return;
   }
 
   for (const record of event.Records) {
     if (!record.s3) {
-      console.log("Not an S3 Record!");
+      console.log('Not an S3 Record!');
       continue;
     }
 
@@ -23,7 +24,7 @@ module.exports.virusScan = async (event, context) => {
     const s3Object = await s3
       .getObject({
         Bucket: record.s3.bucket.name,
-        Key: record.s3.object.key
+        Key: record.s3.object.key,
       })
       .promise();
 
@@ -32,7 +33,7 @@ module.exports.virusScan = async (event, context) => {
 
     try {
       // scan it
-      execSync(`./bin/clamscan --database=./var/lib/clamav /tmp/${record.s3.object.key}`, { stdio: "inherit" });
+      execSync(`./bin/clamscan --database=./var/lib/clamav /tmp/${record.s3.object.key}`, { stdio: 'inherit' });
 
       console.log(`File ${record.s3.object.key} clean!`);
 
@@ -44,14 +45,14 @@ module.exports.virusScan = async (event, context) => {
             TagSet: [
               {
                 Key: 'av-status',
-                Value: 'clean'
+                Value: 'clean',
               },
-            ]
-          }
+            ],
+          },
         })
         .promise();
-    } catch(err) {
-      if (err.status === 1) {
+    } catch (error) {
+      if (error.status === 1) {
         console.log(`File ${record.s3.object.key} dirty!`);
 
         // tag as dirty, OR you can delete it
@@ -63,10 +64,10 @@ module.exports.virusScan = async (event, context) => {
               TagSet: [
                 {
                   Key: 'av-status',
-                  Value: 'dirty'
-                }
-              ]
-            }
+                  Value: 'dirty',
+                },
+              ],
+            },
           })
           .promise();
       }
