@@ -2,12 +2,32 @@
   "name": "antivirus-lambda",
   "devDependencies": {
     "@types/aws-lambda": "^8.10.93",
+    "@types/node": "^17.0.23",
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
     "aws-sdk": "^2.964.0",
+    "eslint": "^8.13.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^16.2.0",
+    "eslint-config-liebe": "^1.4.2",
+    "eslint-import-resolver-typescript": "^2.7.1",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jest": "^26.1.4",
+    "eslint-plugin-json": "^3.1.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
+    "eslint-plugin-sonarjs": "^0.11.0",
+    "eslint-plugin-unicorn": "^40.1.0",
     "jest": "^27.0.6",
     "serverless-plugin-warmup": "^7.1.0",
-    "serverless-prune-plugin": "^2.0.1"
+    "serverless-prune-plugin": "^2.0.1",
+    "typescript": "^4.6.3"
   },
   "scripts": {
+    "compile": "tsc",
+    "lint": "eslint --cache 'src/**/*.{js,ts}'",
+    "lint:fix": "eslint --cache 'src/**/*.{js,ts}' --fix",
     "test": "jest handler.test.js"
   }
 }
