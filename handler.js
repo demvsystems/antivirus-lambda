@@ -1,5 +1,5 @@
 const { execSync } = require("child_process");
-const { writeFileSync, unlinkSync, mkdirSync } = require('fs');
+const { writeFileSync, unlinkSync, mkdirSync, readdirSync, readFileSync } = require('fs');
 const S3 = require("aws-sdk/clients/s3");
 
 const s3 = new S3();
@@ -74,6 +74,14 @@ async function scan(event, context) {
   }
 };
 
+async function getDefinitions(event, context) {
+  const defsDir = '/tmp/defs'
+
+  mkdirSync(defsDir, { recursive: true })
+
+
+}
+
 /**
  * @type {AWSLambda.ScheduledHandler}
  */
@@ -91,7 +99,14 @@ async function updateDefinitions(event, context) {
         }
       }
     );
-    console.log(execSync(`ls ${defsDir}`, { stdio: 'inherit' }));
+
+    const files = readdirSync(defsDir).map(file => ({name: file, content: readFileSync(`${defsDir}/${file}`)}))
+
+    await Promise.all(
+      files.map(
+        file => s3.putObject({Bucket: 'clambda-av-definitions-demv', Key: file.name, Body: file.content}).promise()
+      )
+    );
   } catch (error) {
     console.error("Fetching new virus definitions failed!" + error);
     unlinkSync(defsDir)
@@ -123,7 +138,7 @@ module.exports.virusScan = function (event, context) {
 
   // Must be an S3 event
   } else {
-    console.log(event, context);
+    updateDefinitions(event, context, null);
     scan(event, context, null);
   }
 }
