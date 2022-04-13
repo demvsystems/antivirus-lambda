@@ -33,7 +33,7 @@ functions:
       name: clambda-av
     memorySize: 4096
     events:
-      - s3: 
+      - s3:
           bucket: clambda-av-files-demv
           event: s3:ObjectCreated:*
     timeout: 120

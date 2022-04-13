@@ -59,8 +59,6 @@ RUN groupadd clamav && \
     useradd -g clamav -s /bin/false -c "Clam Antivirus" clamav && \
     useradd -g clamav -s /bin/false -c "Clam Antivirus" clamupdate
 
-RUN LD_LIBRARY_PATH=./lib ./bin/freshclam --config-file=bin/freshclam.conf
-
 FROM public.ecr.aws/lambda/nodejs:14
 
 COPY --from=layer-image /home/build ./
