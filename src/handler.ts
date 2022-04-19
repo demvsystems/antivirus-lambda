@@ -5,10 +5,19 @@ import type { Context, S3Event, ScheduledEvent } from 'aws-lambda';
 import S3 from 'aws-sdk/clients/s3';
 import { execSync } from 'child_process';
 import {
+  createWriteStream,
+  existsSync,
   mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync,
 } from 'fs';
 
 const s3 = new S3();
+
+const definitionsDirectory = '/tmp/defs';
+const definitions = [
+  'bytecode.cvd',
+  'daily.cvd',
+  'main.cvd',
+];
 
 async function scan(event: S3Event, _context: Context) {
   for (const record of event.Records) {
@@ -77,23 +86,35 @@ async function scan(event: S3Event, _context: Context) {
   }
 }
 
-async function getDefinitions(event, context) {
-  const defsDir = '/tmp/defs';
+async function getDefinitions() {
+  // TODO add check if we already have downloaded the definitions and if their checksums
+  // match -> abort
 
-  mkdirSync(defsDir, { recursive: true });
+  if (!existsSync(definitionsDirectory)) {
+    mkdirSync(definitionsDirectory, { recursive: true });
+  }
+
+  await Promise.all(
+    definitions.map((definition) => new Promise<void>((resolve, reject) => {
+      const writeStream = createWriteStream(`${definitionsDirectory}/${definition}`);
+      const readStream = s3.getObject({ Bucket: 'clambda-av-definitions-demv', Key: definition }).createReadStream();
+
+      readStream.on('end', () => resolve());
+      readStream.on('error', (error) => reject(error));
+
+      readStream.pipe(writeStream);
+    })),
+  );
 }
 
-/**
- * @type {AWSLambda.ScheduledHandler}
- */
-async function updateDefinitions(event, context) {
-  const defsDir = '/tmp/defs';
-
-  mkdirSync(defsDir, { recursive: true });
+async function updateDefinitions(): Promise<void> {
+  if (!existsSync(definitionsDirectory)) {
+    mkdirSync(definitionsDirectory, { recursive: true });
+  }
 
   try {
     execSync(
-      `./bin/freshclam --config-file=bin/freshclam.conf --datadir=${defsDir}`,
+      `./bin/freshclam --config-file=bin/freshclam.conf --datadir=${definitionsDirectory}`,
       {
         stdio: 'inherit',
         env: {
@@ -102,7 +123,10 @@ async function updateDefinitions(event, context) {
       },
     );
 
-    const files = readdirSync(defsDir).map((file) => ({ name: file, content: readFileSync(`${defsDir}/${file}`) }));
+    const files = readdirSync(definitionsDirectory)
+      .map(
+        (file) => ({ name: file, content: readFileSync(`${definitionsDirectory}/${file}`) }),
+      );
 
     await Promise.all(
       files.map(
@@ -111,7 +135,7 @@ async function updateDefinitions(event, context) {
     );
   } catch (error) {
     console.error(`Fetching new virus definitions failed!${error}`);
-    unlinkSync(defsDir);
+    unlinkSync(definitionsDirectory);
   }
 
   // TODO
