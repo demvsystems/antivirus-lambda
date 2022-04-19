@@ -36,7 +36,9 @@ provider:
     - Effect: Allow
       Action:
         - s3:GetObject
+        - s3:GetObjectAcl
         - s3:PutObject
+        - s3:PutObjectAcl
       Resource: "arn:aws:s3:::clambda-av-definitions-demv/*"
 
 functions:
