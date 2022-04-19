@@ -149,11 +149,6 @@ async function updateDefinitions(): Promise<void> {
     console.error(`Updating virus definitions failed:\n\n${error}`);
     unlinkSync(definitionsDirectory);
   }
-
-  // TODO
-  // 1. iterate over the downloaded definitions
-  // 2. upload them to a s3 instance
-  // 3. remove temp folder
 }
 
 export function virusScan(event: S3Event | ScheduledEvent, context: Context): void {
@@ -172,7 +167,6 @@ export function virusScan(event: S3Event | ScheduledEvent, context: Context): vo
 
   // Must be an S3 event
   } else {
-    updateDefinitions();
     scan(event as S3Event, context);
   }
 }
