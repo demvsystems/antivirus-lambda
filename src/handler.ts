@@ -1,5 +1,7 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable no-console */
 /* eslint-disable no-restricted-syntax */
+import type { Context, S3Event, ScheduledEvent } from 'aws-lambda';
 import S3 from 'aws-sdk/clients/s3';
 import { execSync } from 'child_process';
 import {
@@ -8,10 +10,7 @@ import {
 
 const s3 = new S3();
 
-/**
- * @type {AWSLambda.S3Handler}
-*/
-async function scan(event, _context) {
+async function scan(event: S3Event, _context: Context) {
   for (const record of event.Records) {
     if (!record.s3) {
       console.log('Not an S3 Record!');
@@ -121,10 +120,7 @@ async function updateDefinitions(event, context) {
   // 3. remove temp folder
 }
 
-/**
- * @type {AWSLambda.Handler<AWSLambda.S3Event | AWSLambda.ScheduledEvent>}
- */
-module.exports.virusScan = function (event, context) {
+export function virusScan(event: S3Event | ScheduledEvent, context: Context): void {
   console.log('event:', event, 'content:', context);
   // If not a S3 event either keep lamda warm or update the definitions
   if (!event.Records) {
@@ -135,12 +131,12 @@ module.exports.virusScan = function (event, context) {
 
     if (event.detail === 'update') {
       console.log('Updating virus definitions');
-      updateDefinitions(event, context, null);
+      updateDefinitions();
     }
 
   // Must be an S3 event
   } else {
-    updateDefinitions(event, context, null);
-    scan(event, context, null);
+    updateDefinitions();
+    scan(event as S3Event, context);
   }
-};
+}
