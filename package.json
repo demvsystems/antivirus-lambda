@@ -28,6 +28,7 @@
   },
   "scripts": {
     "compile": "tsc",
+    "watch": "tsc --watch",
     "lint": "eslint --cache 'src/**/*.{js,ts}'",
     "lint:fix": "eslint --cache 'src/**/*.{js,ts}' --fix",
     "test": "jest handler.test.js"
