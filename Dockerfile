@@ -63,6 +63,6 @@ FROM public.ecr.aws/lambda/nodejs:14
 
 COPY --from=layer-image /home/build ./
 
-COPY handler.js ./
+COPY dist/handler.js ./
 
 CMD ["handler.virusScan"]
