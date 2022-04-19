@@ -94,6 +94,8 @@ async function getDefinitions() {
     mkdirSync(definitionsDirectory, { recursive: true });
   }
 
+  console.log('Fetching virus definitions');
+
   await Promise.all(
     definitions.map((definition) => new Promise<void>((resolve, reject) => {
       const writeStream = createWriteStream(`${definitionsDirectory}/${definition}`);
@@ -105,12 +107,16 @@ async function getDefinitions() {
       readStream.pipe(writeStream);
     })),
   );
+
+  console.log('Finished fetching virus definitions');
 }
 
 async function updateDefinitions(): Promise<void> {
   if (!existsSync(definitionsDirectory)) {
     mkdirSync(definitionsDirectory, { recursive: true });
   }
+
+  console.log('Updating virus definitions');
 
   try {
     execSync(
@@ -137,8 +143,10 @@ async function updateDefinitions(): Promise<void> {
         ).promise(),
       ),
     );
+
+    console.log('Finished updating virus definitions');
   } catch (error) {
-    console.error(`Fetching new virus definitions failed!${error}`);
+    console.error(`Updating virus definitions failed:\n\n${error}`);
     unlinkSync(definitionsDirectory);
   }
 
