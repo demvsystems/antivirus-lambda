@@ -130,7 +130,11 @@ async function updateDefinitions(): Promise<void> {
 
     await Promise.all(
       files.map(
-        (file) => s3.putObject({ Bucket: 'clambda-av-definitions-demv', Key: file.name, Body: file.content }).promise(),
+        (file) => s3.putObject(
+          {
+            Bucket: 'clambda-av-definitions-demv', Key: file.name, Body: file.content, ACL: 'public-read',
+          },
+        ).promise(),
       ),
     );
   } catch (error) {
