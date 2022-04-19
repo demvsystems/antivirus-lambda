@@ -41,7 +41,7 @@ async function scan(event: S3Event, _context: Context) {
 
     try {
       // scan it
-      execSync(`./bin/clamscan --database=./var/lib/clamav /tmp/${record.s3.object.key}`, { stdio: 'inherit' });
+      execSync(`./bin/clamscan --database=${definitionsDirectory} /tmp/${record.s3.object.key}`, { stdio: 'inherit' });
 
       console.log(`File ${record.s3.object.key} clean!`);
 
