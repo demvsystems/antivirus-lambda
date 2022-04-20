@@ -19,6 +19,8 @@ const definitions = [
   'main.cvd',
 ];
 
+const { DEFINITIONS_BUCKET = '' } = process.env;
+
 function definitionsLocallyAvailable(): boolean {
   // TODO add md5 check
   try {
@@ -111,17 +113,22 @@ async function getDefinitions() {
 
   console.log('Fetching virus definitions');
 
-  await Promise.all(
-    definitions.map((definition) => new Promise<void>((resolve, reject) => {
-      const writeStream = createWriteStream(`${definitionsDirectory}/${definition}`);
-      const readStream = s3.getObject({ Bucket: 'clambda-av-definitions-demv', Key: definition }).createReadStream();
+  try {
+    await Promise.all(
+      definitions.map((definition) => new Promise<void>((resolve, reject) => {
+        const writeStream = createWriteStream(`${definitionsDirectory}/${definition}`);
+        const readStream = s3.getObject({ Bucket: DEFINITIONS_BUCKET, Key: definition }).createReadStream();
 
-      readStream.on('end', () => resolve());
-      readStream.on('error', (error) => reject(error));
+        readStream.on('end', () => resolve());
+        readStream.on('error', (error) => reject(error));
 
-      readStream.pipe(writeStream);
-    })),
-  );
+        readStream.pipe(writeStream);
+      })),
+    );
+  } catch (error) {
+    console.error(`Fetching virus definitions failed:\n\n${error}`);
+    return;
+  }
 
   console.log('Finished fetching virus definitions');
 }
@@ -153,7 +160,7 @@ async function updateDefinitions(): Promise<void> {
       files.map(
         (file) => s3.putObject(
           {
-            Bucket: 'clambda-av-definitions-demv', Key: file.name, Body: file.content, ACL: 'public-read',
+            Bucket: DEFINITIONS_BUCKET, Key: file.name, Body: file.content, ACL: 'public-read',
           },
         ).promise(),
       ),

@@ -17,12 +17,15 @@ resources:
     Definitions:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: clambda-av-definitions-demv
+        BucketName: ${env:DEFINITIONS_BUCKET}
 
 provider:
   name: aws
   runtime: nodejs14.x
   region: eu-central-1
+  environment:
+    DEFINITIONS_BUCKET: ${env:DEFINITIONS_BUCKET}
+    TARGET_BUCKET: ${env:TARGET_BUCKET}
   ecr:
     images:
       clambda-av:
@@ -32,14 +35,14 @@ provider:
       Action:
         - s3:GetObject
         - s3:PutObjectTagging
-      Resource: "arn:aws:s3:::clambda-av-files-demv/*"
+      Resource: "arn:aws:s3:::${env:TARGET_BUCKET}/*"
     - Effect: Allow
       Action:
         - s3:GetObject
         - s3:GetObjectAcl
         - s3:PutObject
         - s3:PutObjectAcl
-      Resource: "arn:aws:s3:::clambda-av-definitions-demv/*"
+      Resource: "arn:aws:s3:::${env:DEFINITIONS_BUCKET}/*"
 
 functions:
   virusScan:
@@ -48,7 +51,7 @@ functions:
     memorySize: 4096
     events:
       - s3:
-          bucket: clambda-av-files-demv
+          bucket: ${env:TARGET_BUCKET}
           event: s3:ObjectCreated:*
       - schedule:
           rate: rate(3 hours)
