@@ -8,8 +8,11 @@ useDotenv: true
 
 custom:
   warmup:
-    testWarmer:
+    warmer:
       enabled: true
+      events:
+        - schedule: rate(15 minutes)
+
   prune:
     automatic: true
     number: 3
