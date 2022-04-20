@@ -4,6 +4,8 @@ plugins:
   - serverless-plugin-warmup
   - serverless-prune-plugin
 
+useDotenv: true
+
 custom:
   warmup:
     testWarmer:
@@ -12,10 +14,19 @@ custom:
     automatic: true
     number: 3
 
+resources:
+  Resources:
+    Definitions:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:DEFINITIONS_BUCKET}
+
 provider:
   name: aws
   runtime: nodejs14.x
   region: eu-central-1
+  environment:
+    DEFINITIONS_BUCKET: ${env:DEFINITIONS_BUCKET}
   ecr:
     images:
       clambda-av:
@@ -25,7 +36,14 @@ provider:
       Action:
         - s3:GetObject
         - s3:PutObjectTagging
-      Resource: "arn:aws:s3:::clambda-av-files-demv/*"
+      Resource: "arn:aws:s3:::${env:TARGET_BUCKET}/*"
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:GetObjectAcl
+        - s3:PutObject
+        - s3:PutObjectAcl
+      Resource: "arn:aws:s3:::${env:DEFINITIONS_BUCKET}/*"
 
 functions:
   virusScan:
@@ -33,9 +51,12 @@ functions:
       name: clambda-av
     memorySize: 4096
     events:
-      - s3: 
-          bucket: clambda-av-files-demv
+      - s3:
+          bucket: ${env:TARGET_BUCKET}
           event: s3:ObjectCreated:*
+      - schedule:
+          rate: rate(3 hours)
+          name: update-virus-definitions-schedule
     timeout: 120
 
 package:

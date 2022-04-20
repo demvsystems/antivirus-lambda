@@ -6,3 +6,8 @@ layer/etc
 layer/var
 coverage/
 .DS_Store
+dist/
+
+# Eslint
+.eslintcache
+.env
