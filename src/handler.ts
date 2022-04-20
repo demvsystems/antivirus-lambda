@@ -19,6 +19,15 @@ const definitions = [
   'main.cvd',
 ];
 
+function definitionsLocallyAvailable(): boolean {
+  // TODO add md5 check
+  try {
+    return existsSync(definitionsDirectory) && readdirSync(definitionsDirectory).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function scan(event: S3Event, _context: Context) {
   for (const record of event.Records) {
     if (!record.s3) {
@@ -40,6 +49,12 @@ async function scan(event: S3Event, _context: Context) {
     console.log(`Running virus check for '${record.s3.object.key}'`);
 
     try {
+      // check for virus definitions first
+      if (!definitionsLocallyAvailable()) {
+        console.log('Definitions not available locally');
+        await getDefinitions();
+      }
+
       // scan it
       execSync(`./bin/clamscan --database=${definitionsDirectory} /tmp/${record.s3.object.key}`, { stdio: 'inherit' });
 
@@ -151,22 +166,27 @@ async function updateDefinitions(): Promise<void> {
   }
 }
 
-export function virusScan(event: S3Event | ScheduledEvent, context: Context): void {
-  console.log('event:', event, 'content:', context);
-  // If not a S3 event either keep lamda warm or update the definitions
-  if (!event.Records) {
-    if (event.detail === 'warmer') {
+export async function virusScan(event: unknown, context: Context): Promise<void> {
+  // TypeScript cannot infer correct properties since S3Event and ScheduledEvent have
+  // almost no overlap. Therefore we cast here to get proper type hinting.
+  const scheduledEvent = event as ScheduledEvent;
+  const s3Event = event as S3Event;
+
+  if (scheduledEvent.source || scheduledEvent.resources) {
+    const isWarmer = scheduledEvent.source === 'serverless-plugin-warmup';
+    const isUpdater = scheduledEvent.resources && scheduledEvent.resources.some(
+      (resource) => resource.includes('update-virus-definitions-schedule'),
+    );
+
+    if (isWarmer) {
       console.log('warmed');
       return;
     }
 
-    if (event.detail === 'update') {
-      console.log('Updating virus definitions');
-      updateDefinitions();
+    if (isUpdater) {
+      await updateDefinitions();
     }
-
-  // Must be an S3 event
-  } else {
-    scan(event as S3Event, context);
+  } else if (s3Event.Records) {
+    await scan(s3Event, context);
   }
 }

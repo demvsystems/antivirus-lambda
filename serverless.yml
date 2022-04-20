@@ -50,6 +50,9 @@ functions:
       - s3:
           bucket: clambda-av-files-demv
           event: s3:ObjectCreated:*
+      - schedule:
+          rate: rate(3 hours)
+          name: update-virus-definitions-schedule
     timeout: 120
 
 package:
