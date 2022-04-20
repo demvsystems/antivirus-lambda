@@ -4,6 +4,8 @@ plugins:
   - serverless-plugin-warmup
   - serverless-prune-plugin
 
+useDotenv: true
+
 custom:
   warmup:
     testWarmer:
