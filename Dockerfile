@@ -19,6 +19,7 @@ RUN yum update -y && amazon-linux-extras install epel -y && yum install -y \
 
 RUN yumdownloader -x \*i686 --archlist=x86_64 \
     clamav \
+    clamav-scanner-systemd \
     clamav-lib \
     clamav-update \
     json-c \
@@ -29,9 +30,13 @@ RUN yumdownloader -x \*i686 --archlist=x86_64 \
     xz-libs \
     libprelude \
     gnutls \
-    nettle
+    nettle \
+    systemd-libs \
+    elfutils-libs \
+    lz4
 
 RUN rpm2cpio clamav-0*.rpm | cpio -vimd
+RUN rpm2cpio clamd-0*.rpm | cpio -vimd
 RUN rpm2cpio clamav-lib*.rpm | cpio -vimd
 RUN rpm2cpio clamav-update*.rpm | cpio -vimd
 RUN rpm2cpio json-c*.rpm | cpio -vimd
@@ -43,17 +48,21 @@ RUN rpm2cpio xz-libs*.rpm | cpio -vimd
 RUN rpm2cpio libprelude*.rpm | cpio -vimd
 RUN rpm2cpio gnutls*.rpm | cpio -vimd
 RUN rpm2cpio nettle*.rpm | cpio -vimd
+RUN rpm2cpio systemd-libs*.rpm | cpio -vimd
+RUN rpm2cpio elfutils-libs*.rpm | cpio -idmv
+RUN rpm2cpio lz4*.rpm | cpio -idmv
+RUN rm -rf *.rpm
 
 RUN mkdir -p bin && \
     mkdir -p lib && \
     mkdir -p var/lib/clamav && \
     chmod -R 777 var/lib/clamav
 
-COPY ./freshclam.conf .
+COPY ./freshclam.conf ./bin/freshclam.conf
+COPY ./clamd.conf ./bin/scan.conf
 
-RUN cp usr/bin/clamscan usr/bin/freshclam bin/. && \
-    cp usr/lib64/* lib/. && \
-    cp freshclam.conf bin/freshclam.conf
+RUN cp usr/bin/clamscan usr/bin/clamdscan usr/bin/freshclam bin/. && \
+    cp -r usr/lib64/* lib/.
 
 RUN groupadd clamav && \
     useradd -g clamav -s /bin/false -c "Clam Antivirus" clamav && \
