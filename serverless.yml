@@ -27,7 +27,6 @@ provider:
   region: eu-central-1
   environment:
     DEFINITIONS_BUCKET: ${env:DEFINITIONS_BUCKET}
-    TARGET_BUCKET: ${env:TARGET_BUCKET}
   ecr:
     images:
       clambda-av:
