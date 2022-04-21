@@ -58,6 +58,8 @@ function getReturnCode(childProcess: ChildProcess): Promise<number | null> {
 }
 
 export class ClamAVService implements IClamAVService {
+  private useClamd: boolean;
+
   private definitionFiles: string[];
 
   private definitionsDirectory: string;
@@ -69,11 +71,13 @@ export class ClamAVService implements IClamAVService {
   private clamdChildProcess: ChildProcess | null;
 
   constructor(
+    useClamd = true,
     definitionFiles = DEFINITION_FILES,
     definitionsDirectory = DEFINITIONS_DIR,
     freshclamConfig = FRESHCLAM_CONFIG,
     clamdConfig = CLAMD_CONFIG,
   ) {
+    this.useClamd = useClamd;
     this.definitionFiles = definitionFiles;
     this.definitionsDirectory = definitionsDirectory;
     this.freshclamConfig = freshclamConfig;
@@ -82,7 +86,13 @@ export class ClamAVService implements IClamAVService {
   }
 
   async scan(filePath: string): Promise<boolean> {
-    const returncode = await this.clamdscan(filePath);
+    const method = this.useClamd ? this.clamdscan : this.clamscan;
+
+    if (this.useClamd && !await ClamAVService.isClamdRunning()) {
+      await this.startClamd();
+    }
+
+    const returncode = await method.call(this, filePath);
     return returncode === 0;
   }
 

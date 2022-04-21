@@ -62,10 +62,7 @@ async function scan(event: S3Event, _context: Context) {
 
       // scan it
       try {
-        if (!await ClamAVService.isClamdRunning()) {
-          await clamAvService.startClamd();
-        }
-        await clamAvService.clamdscan(`/tmp/${record.s3.object.key}`);
+        await clamAvService.scan(`/tmp/${record.s3.object.key}`);
       } catch (error) {
         console.error(error);
         return;
