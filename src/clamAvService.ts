@@ -33,6 +33,8 @@ export interface IClamAVService extends IScanService {
   clamscan(filePath: string): Promise<number | null>
   clamdscan(filePath: string): Promise<number | null>
   freshclam(): Promise<number | null>
+  definitionsExist(): Promise<boolean>
+  startClamd(): Promise<number>
 }
 
 function spawnAsync(
