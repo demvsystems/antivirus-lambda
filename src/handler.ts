@@ -10,15 +10,9 @@ import {
 } from 'fs';
 
 import { ClamAVService } from './clamAvService';
+import { DEFINITION_FILES, DEFINITIONS_DIR } from './constants';
 
 const s3 = new S3();
-
-const definitionsDirectory = '/tmp/defs';
-const definitions = [
-  'bytecode.cvd',
-  'daily.cvd',
-  'main.cvd',
-];
 
 const clamAvService = new ClamAVService();
 
@@ -27,7 +21,7 @@ const { DEFINITIONS_BUCKET = '' } = process.env;
 function definitionsLocallyAvailable(): boolean {
   // TODO add md5 check
   try {
-    return existsSync(definitionsDirectory) && readdirSync(definitionsDirectory).length > 0;
+    return existsSync(DEFINITIONS_DIR) && readdirSync(DEFINITIONS_DIR).length > 0;
   } catch {
     return false;
   }
@@ -115,16 +109,16 @@ async function getDefinitions() {
   // TODO add check if we already have downloaded the definitions and if their checksums
   // match -> abort
 
-  if (!existsSync(definitionsDirectory)) {
-    mkdirSync(definitionsDirectory, { recursive: true });
+  if (!existsSync(DEFINITIONS_DIR)) {
+    mkdirSync(DEFINITIONS_DIR, { recursive: true });
   }
 
   console.log('Fetching virus definitions');
 
   try {
     await Promise.all(
-      definitions.map((definition) => new Promise<void>((resolve, reject) => {
-        const writeStream = createWriteStream(`${definitionsDirectory}/${definition}`);
+      DEFINITION_FILES.map((definition) => new Promise<void>((resolve, reject) => {
+        const writeStream = createWriteStream(`${DEFINITIONS_DIR}/${definition}`);
         const readStream = s3.getObject({ Bucket: DEFINITIONS_BUCKET, Key: definition }).createReadStream();
 
         readStream.on('end', () => resolve());
@@ -142,8 +136,8 @@ async function getDefinitions() {
 }
 
 async function updateDefinitions(): Promise<void> {
-  if (!existsSync(definitionsDirectory)) {
-    mkdirSync(definitionsDirectory, { recursive: true });
+  if (!existsSync(DEFINITIONS_DIR)) {
+    mkdirSync(DEFINITIONS_DIR, { recursive: true });
   }
 
   console.log('Updating virus definitions');
@@ -151,9 +145,9 @@ async function updateDefinitions(): Promise<void> {
   try {
     await clamAvService.freshclam();
 
-    const files = readdirSync(definitionsDirectory)
+    const files = readdirSync(DEFINITIONS_DIR)
       .map(
-        (file) => ({ name: file, content: readFileSync(`${definitionsDirectory}/${file}`) }),
+        (file) => ({ name: file, content: readFileSync(`${DEFINITIONS_DIR}/${file}`) }),
       );
 
     await Promise.all(
@@ -169,7 +163,7 @@ async function updateDefinitions(): Promise<void> {
     console.log('Finished updating virus definitions');
   } catch (error) {
     console.error(`Updating virus definitions failed:\n\n${error}`);
-    unlinkSync(definitionsDirectory);
+    unlinkSync(DEFINITIONS_DIR);
   }
 }
 

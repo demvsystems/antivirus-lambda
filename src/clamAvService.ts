@@ -6,30 +6,20 @@ import { existsSync } from 'fs';
 import { readdir, stat, unlink } from 'fs/promises';
 import { createConnection } from 'net';
 
-const DEFINITION_FILES = [
-  'bytecode.cvd',
-  'daily.cvd',
-  'main.cvd',
-];
-const DEFINITIONS_DIR = '/tmp/defs';
+import {
+  CLAMD_BIN,
+  CLAMD_CONFIG,
+  CLAMD_SOCKET,
+  CLAMDSCAN_BIN,
+  CLAMSCAN_BIN,
+  // DEFINITION_FILES,
+  DEFINITIONS_DIR,
+  FRESHCLAM_BIN,
+  FRESHCLAM_CONFIG,
+  LD_LIBRARY_PATH,
+} from './constants';
 
-const FRESHCLAM_CONFIG = 'bin/freshclam.conf';
-const CLAMD_CONFIG = 'bin/scan.conf';
-
-const CLAMSCAN_BIN = './bin/clamscan';
-const CLAMDSCAN_BIN = './bin/clamdscan';
-const FRESHCLAM_BIN = './bin/freshclam';
-const CLAMD_BIN = './bin/clamd';
-
-const CLAMD_SOCKET = '/tmp/clamd.sock';
-
-const LD_LIBRARY_PATH = './lib';
-
-export interface IScanService {
-  scan(filePath: string): Promise<boolean>
-}
-
-export interface IClamAVService extends IScanService {
+export interface IClamAVService {
   clamscan(filePath: string): Promise<number | null>
   clamdscan(filePath: string): Promise<number | null>
   freshclam(): Promise<number | null>
@@ -60,32 +50,15 @@ function getReturnCode(childProcess: ChildProcess): Promise<number | null> {
 }
 
 export class ClamAVService implements IClamAVService {
-  private useClamd: boolean;
-
-  private definitionFiles: string[];
-
-  private definitionsDirectory: string;
-
-  private freshclamConfig: string;
-
-  private clamdConfig: string;
-
-  private clamdChildProcess: ChildProcess | null;
+  private clamdChildProcess: ChildProcess | null = null;
 
   constructor(
-    useClamd = true,
-    definitionFiles = DEFINITION_FILES,
-    definitionsDirectory = DEFINITIONS_DIR,
-    freshclamConfig = FRESHCLAM_CONFIG,
-    clamdConfig = CLAMD_CONFIG,
-  ) {
-    this.useClamd = useClamd;
-    this.definitionFiles = definitionFiles;
-    this.definitionsDirectory = definitionsDirectory;
-    this.freshclamConfig = freshclamConfig;
-    this.clamdConfig = clamdConfig;
-    this.clamdChildProcess = null;
-  }
+    private useClamd: boolean = true,
+    // private definitionFiles: string[] = DEFINITION_FILES,
+    private definitionsDirectory: string = DEFINITIONS_DIR,
+    private freshclamConfig: string = FRESHCLAM_CONFIG,
+    private clamdConfig: string = CLAMD_CONFIG,
+  ) {}
 
   async scan(filePath: string): Promise<boolean> {
     const method = this.useClamd ? this.clamdscan : this.clamscan;
@@ -99,33 +72,39 @@ export class ClamAVService implements IClamAVService {
   }
 
   async clamscan(filePath: string): Promise<number | null> {
-    return getReturnCode(await spawnAsync(CLAMSCAN_BIN, [
-      `--database=${this.definitionsDirectory}`,
-      filePath,
-    ]));
+    return getReturnCode(
+      await spawnAsync(CLAMSCAN_BIN, [
+        `--database=${this.definitionsDirectory}`,
+        filePath,
+      ]),
+    );
   }
 
   async clamdscan(filePath: string): Promise<number | null> {
-    return getReturnCode(await spawnAsync(CLAMDSCAN_BIN, [
-      '--stdout',
-      `--config-file=${this.clamdConfig}`,
-      filePath,
-    ]));
+    return getReturnCode(
+      await spawnAsync(CLAMDSCAN_BIN, [
+        '--stdout',
+        `--config-file=${this.clamdConfig}`,
+        filePath,
+      ]),
+    );
   }
 
   async freshclam(): Promise<number | null> {
-    return getReturnCode(await spawnAsync(
-      FRESHCLAM_BIN,
-      [
-        `--config-file=${this.freshclamConfig}`,
-        `--datadir=${this.definitionsDirectory}`,
-      ],
-      {
-        env: {
-          LD_LIBRARY_PATH,
+    return getReturnCode(
+      await spawnAsync(
+        FRESHCLAM_BIN,
+        [
+          `--config-file=${this.freshclamConfig}`,
+          `--datadir=${this.definitionsDirectory}`,
+        ],
+        {
+          env: {
+            LD_LIBRARY_PATH,
+          },
         },
-      },
-    ));
+      ),
+    );
   }
 
   public async definitionsExist(): Promise<boolean> {
