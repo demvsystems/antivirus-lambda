@@ -3,12 +3,13 @@
 /* eslint-disable no-restricted-syntax */
 import type { Context, S3Event, ScheduledEvent } from 'aws-lambda';
 import S3 from 'aws-sdk/clients/s3';
-import { execSync } from 'child_process';
 import {
   createWriteStream,
   existsSync,
   mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync,
 } from 'fs';
+
+import { ClamAVService } from './clamAvService';
 
 const s3 = new S3();
 
@@ -18,6 +19,8 @@ const definitions = [
   'daily.cvd',
   'main.cvd',
 ];
+
+const clamAvService = new ClamAVService();
 
 const { DEFINITIONS_BUCKET = '' } = process.env;
 
@@ -58,7 +61,15 @@ async function scan(event: S3Event, _context: Context) {
       }
 
       // scan it
-      execSync(`./bin/clamscan --database=${definitionsDirectory} /tmp/${record.s3.object.key}`, { stdio: 'inherit' });
+      try {
+        if (!await ClamAVService.isClamdRunning()) {
+          await clamAvService.startClamd();
+        }
+        await clamAvService.clamdscan(`/tmp/${record.s3.object.key}`);
+      } catch (error) {
+        console.error(error);
+        return;
+      }
 
       console.log(`File ${record.s3.object.key} clean!`);
 
@@ -141,15 +152,7 @@ async function updateDefinitions(): Promise<void> {
   console.log('Updating virus definitions');
 
   try {
-    execSync(
-      `./bin/freshclam --config-file=bin/freshclam.conf --datadir=${definitionsDirectory}`,
-      {
-        stdio: 'inherit',
-        env: {
-          LD_LIBRARY_PATH: './lib',
-        },
-      },
-    );
+    await clamAvService.freshclam();
 
     const files = readdirSync(definitionsDirectory)
       .map(
