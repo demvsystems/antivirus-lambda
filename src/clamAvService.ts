@@ -1,8 +1,9 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 import type { ChildProcess, SpawnOptions } from 'child_process';
 import { spawn } from 'child_process';
+import { existsSync } from 'fs';
 import { readdir, stat, unlink } from 'fs/promises';
-import { createServer } from 'net';
+import { createConnection } from 'net';
 
 const DEFINITION_FILES = [
   'bytecode.cvd',
@@ -127,35 +128,81 @@ export class ClamAVService implements IClamAVService {
     }
   }
 
-  public isClamdRunning(): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const clamdSocket = createServer((socket) => {
+  public static isClamdRunning(): Promise<boolean> {
+    return new Promise((resolve) => {
+      stat(CLAMD_SOCKET).then(() => {
+        console.log(`${CLAMD_SOCKET} exists. Trying to connect...`);
+        const socket = createConnection(
+          CLAMD_SOCKET,
+          () => console.log(`Connected to ${CLAMD_SOCKET}`),
+        );
+
+        socket.setTimeout(10_000);
         socket.write('PING', 'ascii');
-        socket.on('data', (data) => (data.toString('utf8') === 'PONG' ? resolve(true) : resolve(false)));
-        socket.on('error', (error) => reject(error));
+
+        socket.once('data', (data) => {
+          try {
+            if (data.toString('utf8') !== 'PONG') {
+              throw new Error('Did not receive PONG');
+            }
+            resolve(true);
+          } catch {
+            resolve(false);
+          } finally {
+            socket.destroy();
+          }
+        });
+        socket.on('timeout', () => {
+          console.log('Connection attempt timed out');
+          socket.destroy();
+          resolve(false);
+        });
+        socket.on('error', (error) => {
+          console.error(`Connection resulted in error: ${error}`);
+          socket.destroy();
+          resolve(false);
+        });
+
+        return socket;
+      }).catch(() => {
+        console.log(`${CLAMD_SOCKET} not existing`);
+        resolve(false);
       });
-      clamdSocket.listen(CLAMD_SOCKET);
     });
   }
 
   public async startClamd(): Promise<number> {
-    if (await this.isClamdRunning() && this.clamdChildProcess !== null) {
+    if (this.clamdChildProcess !== null) {
       this.clamdChildProcess.kill('SIGTERM');
     }
 
     try {
-      await unlink(CLAMD_SOCKET);
+      if (existsSync(CLAMD_SOCKET)) {
+        await unlink(CLAMD_SOCKET);
+      }
     } catch (error) {
       console.error(error);
       throw error;
     }
 
+    console.log('Spawning clamd...');
+
     this.clamdChildProcess = await spawnAsync(CLAMD_BIN, [`--config-file=${CLAMD_CONFIG}`]);
 
     if (this.clamdChildProcess.pid === undefined) {
-      throw new Error('Could not start clamd. pid is undefined');
+      throw new Error('Could not spawn clamd. pid is undefined');
     }
 
-    return this.clamdChildProcess.pid;
+    console.log(`clamd successfully spawned. PID: ${this.clamdChildProcess.pid}`);
+
+    const returnCode = await getReturnCode(this.clamdChildProcess);
+
+    if (returnCode !== null && returnCode > 0) {
+      throw new Error(`clamd exited with a non-zero return code: '${returnCode}'`);
+    }
+
+    console.log('clamd returned successfully. Daemon is running');
+
+    return returnCode as number;
   }
 }

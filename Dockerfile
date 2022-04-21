@@ -61,7 +61,10 @@ RUN mkdir -p bin && \
 COPY ./freshclam.conf ./bin/freshclam.conf
 COPY ./clamd.conf ./bin/scan.conf
 
-RUN cp usr/bin/clamscan usr/bin/clamdscan usr/bin/freshclam bin/. && \
+RUN cp usr/bin/clamscan \
+    usr/bin/clamdscan \
+    usr/sbin/clamd \
+    usr/bin/freshclam bin/. && \
     cp -r usr/lib64/* lib/.
 
 RUN groupadd clamav && \
