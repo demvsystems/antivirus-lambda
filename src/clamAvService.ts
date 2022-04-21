@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* eslint-disable unicorn/prevent-abbreviations */
 import type { ChildProcess, SpawnOptions } from 'child_process';
 import { spawn } from 'child_process';
@@ -132,34 +133,36 @@ export class ClamAVService implements IClamAVService {
     return new Promise((resolve) => {
       stat(CLAMD_SOCKET).then(() => {
         console.log(`${CLAMD_SOCKET} exists. Trying to connect...`);
+
         const socket = createConnection(
           CLAMD_SOCKET,
           () => console.log(`Connected to ${CLAMD_SOCKET}`),
         );
 
+        socket.setEncoding('utf-8');
         socket.setTimeout(10_000);
-        socket.write('PING', 'ascii');
+        socket.write('PING');
 
-        socket.once('data', (data) => {
+        socket.once('data', (data: string) => {
           try {
-            if (data.toString('utf8') !== 'PONG') {
+            if (data.trim() !== 'PONG') {
               throw new Error('Did not receive PONG');
             }
             resolve(true);
           } catch {
             resolve(false);
           } finally {
-            socket.destroy();
+            socket.end();
           }
         });
         socket.on('timeout', () => {
           console.log('Connection attempt timed out');
-          socket.destroy();
+          socket.end();
           resolve(false);
         });
         socket.on('error', (error) => {
           console.error(`Connection resulted in error: ${error}`);
-          socket.destroy();
+          socket.end();
           resolve(false);
         });
 
