@@ -1,10 +1,9 @@
 /* eslint-disable no-console */
 import type { ChildProcess } from 'child_process';
 import { unlink } from 'fs/promises';
-import { isFile } from 'fspromises-toolbox';
 import { createConnection } from 'net';
 
-import { getReturnCode, spawnAsync } from './utils';
+import { getReturnCode, isFile, spawnAsync } from './utils';
 
 const DEFINITION_FILES = [
   'bytecode.cvd',

@@ -1,8 +1,7 @@
 {
   "name": "antivirus-lambda",
   "dependencies": {
-    "aws-sdk": "^2.964.0",
-    "fspromises-toolbox": "^1.0.3"
+    "aws-sdk": "^2.964.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.93",

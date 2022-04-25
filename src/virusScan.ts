@@ -1,10 +1,9 @@
 /* eslint-disable no-console */
 import type S3 from 'aws-sdk/clients/s3';
 import { readFile, unlink, writeFile } from 'fs/promises';
-import { readDeep } from 'fspromises-toolbox';
 
 import { IScanService } from './clamAvService';
-import { directoryExistsIsNotEmpty, mkdirIfNotExists } from './utils';
+import { directoryExistsIsNotEmpty, mkdirIfNotExists, readDeep } from './utils';
 
 const { DEFINITIONS_BUCKET = '' } = process.env;
 
