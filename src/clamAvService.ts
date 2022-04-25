@@ -2,8 +2,8 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 import type { ChildProcess, SpawnOptions } from 'child_process';
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
-import { readdir, stat, unlink } from 'fs/promises';
+import { unlink } from 'fs/promises';
+import { isFile } from 'fspromises-toolbox';
 import { createConnection } from 'net';
 
 import {
@@ -23,7 +23,6 @@ export interface IClamAVService {
   clamscan(filePath: string): Promise<number | null>
   clamdscan(filePath: string): Promise<number | null>
   freshclam(): Promise<number | null>
-  definitionsExist(): Promise<boolean>
   startClamd(): Promise<number>
 }
 
@@ -107,59 +106,45 @@ export class ClamAVService implements IClamAVService {
     );
   }
 
-  public async definitionsExist(): Promise<boolean> {
-    try {
-      const dirExists = await stat(this.definitionsDirectory)
-        .then(() => true)
-        .catch(() => false);
-      const filesExist = await readdir(this.definitionsDirectory)
-        .then((content) => content.length > 0);
-      return dirExists && filesExist;
-    } catch {
+  public static async isClamdRunning(): Promise<boolean> {
+    const clamdSocketExists = await isFile(CLAMD_SOCKET);
+    if (!clamdSocketExists) {
+      console.log(`${CLAMD_SOCKET} doesn't exist`);
       return false;
     }
-  }
 
-  public static isClamdRunning(): Promise<boolean> {
     return new Promise((resolve) => {
-      stat(CLAMD_SOCKET).then(() => {
-        console.log(`${CLAMD_SOCKET} exists. Trying to connect...`);
+      console.log(`${CLAMD_SOCKET} exists. Trying to connect...`);
 
-        const socket = createConnection(
-          CLAMD_SOCKET,
-          () => console.log(`Connected to ${CLAMD_SOCKET}`),
-        );
+      const socket = createConnection(
+        CLAMD_SOCKET,
+        () => console.log(`Connected to ${CLAMD_SOCKET}`),
+      );
 
-        socket.setEncoding('utf-8');
-        socket.setTimeout(10_000);
-        socket.write('PING');
+      socket.setEncoding('utf-8');
+      socket.setTimeout(10_000);
+      socket.write('PING');
 
-        socket.once('data', (data: string) => {
-          try {
-            if (data.trim() !== 'PONG') {
-              throw new Error('Did not receive PONG');
-            }
-            resolve(true);
-          } catch {
-            resolve(false);
-          } finally {
-            socket.end();
+      socket.once('data', (data: string) => {
+        try {
+          if (data.trim() !== 'PONG') {
+            throw new Error('Did not receive PONG');
           }
-        });
-        socket.on('timeout', () => {
-          console.log('Connection attempt timed out');
-          socket.end();
+          resolve(true);
+        } catch {
           resolve(false);
-        });
-        socket.on('error', (error) => {
-          console.error(`Connection resulted in error: ${error}`);
+        } finally {
           socket.end();
-          resolve(false);
-        });
-
-        return socket;
-      }).catch(() => {
-        console.log(`${CLAMD_SOCKET} not existing`);
+        }
+      });
+      socket.on('timeout', () => {
+        console.log('Connection attempt timed out');
+        socket.end();
+        resolve(false);
+      });
+      socket.on('error', (error) => {
+        console.error(`Connection resulted in error: ${error}`);
+        socket.end();
         resolve(false);
       });
     });
@@ -171,7 +156,7 @@ export class ClamAVService implements IClamAVService {
     }
 
     try {
-      if (existsSync(CLAMD_SOCKET)) {
+      if (await isFile(CLAMD_SOCKET)) {
         await unlink(CLAMD_SOCKET);
       }
     } catch (error) {
