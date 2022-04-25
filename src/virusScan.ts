@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import type S3 from 'aws-sdk/clients/s3';
-import { unlink, writeFile } from 'fs/promises';
+import { readFile, unlink, writeFile } from 'fs/promises';
 import { readDeep } from 'fspromises-toolbox';
 
 import { IScanService } from './clamAvService';
@@ -97,11 +97,11 @@ export class VirusScan implements IVirusScan {
 
     await Promise.all(
       files.map(
-        (file) => this.s3.putObject(
+        async (file) => this.s3.putObject(
           {
             Bucket: DEFINITIONS_BUCKET,
-            Key: file.name,
-            Body: file.content,
+            Key: file,
+            Body: await readFile(file),
             ACL: 'public-read',
           },
         ).promise(),
