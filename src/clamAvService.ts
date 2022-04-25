@@ -60,14 +60,14 @@ export class ClamAVService implements IScanService {
     };
   }
 
-  private async clamscan(filePath: string): Promise<number | null> {
+  async clamscan(filePath: string): Promise<number | null> {
     return getReturnCode(await spawnAsync(CLAMSCAN_BIN, [
       `--database=${this.definitionsDirectory}`,
       filePath,
     ]));
   }
 
-  private async clamdscan(filePath: string): Promise<number | null> {
+  async clamdscan(filePath: string): Promise<number | null> {
     return getReturnCode(await spawnAsync(CLAMDSCAN_BIN, [
       '--stdout',
       `--config-file=${this.clamdConfig}`,
@@ -90,7 +90,7 @@ export class ClamAVService implements IScanService {
     ));
   }
 
-  private static async isClamdRunning(): Promise<boolean> {
+  static async isClamdRunning(): Promise<boolean> {
     const clamdSocketExists = await isFile(CLAMD_SOCKET);
     if (!clamdSocketExists) {
       console.log(`${CLAMD_SOCKET} doesn't exist`);
@@ -134,7 +134,7 @@ export class ClamAVService implements IScanService {
     });
   }
 
-  private async startClamd(): Promise<number> {
+  async startClamd(): Promise<number> {
     if (this.clamdChildProcess !== null) {
       this.clamdChildProcess.kill('SIGTERM');
     }
