@@ -140,6 +140,7 @@ export class VirusScan implements IVirusScan {
       })
       .promise();
 
+    // @ts-ignore
     writeFileSync(path, s3Object.Body);
 
     return path;
