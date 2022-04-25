@@ -4,19 +4,26 @@ import { unlink } from 'fs/promises';
 import { isFile } from 'fspromises-toolbox';
 import { createConnection } from 'net';
 
-import {
-  CLAMD_BIN,
-  CLAMD_CONFIG,
-  CLAMD_SOCKET,
-  CLAMDSCAN_BIN,
-  CLAMSCAN_BIN,
-  DEFINITION_FILES,
-  DEFINITIONS_DIR,
-  FRESHCLAM_BIN,
-  FRESHCLAM_CONFIG,
-  LD_LIBRARY_PATH,
-} from './constants';
 import { getReturnCode, spawnAsync } from './utils';
+
+const DEFINITION_FILES = [
+  'bytecode.cvd',
+  'daily.cvd',
+  'main.cvd',
+];
+const DEFINITIONS_DIR = '/tmp/defs';
+
+const FRESHCLAM_CONFIG = 'bin/freshclam.conf';
+const CLAMD_CONFIG = 'bin/scan.conf';
+
+const CLAMSCAN_BIN = './bin/clamscan';
+const CLAMDSCAN_BIN = './bin/clamdscan';
+const FRESHCLAM_BIN = './bin/freshclam';
+const CLAMD_BIN = './bin/clamd';
+
+const CLAMD_SOCKET = '/tmp/clamd.sock';
+
+const LD_LIBRARY_PATH = './lib';
 
 export interface IScanService {
   scan(filePath: string): Promise<boolean>
