@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 
-import type { Context, S3Event, ScheduledEvent } from 'aws-lambda';
+import type { S3Event, ScheduledEvent } from 'aws-lambda';
 import S3 from 'aws-sdk/clients/s3';
 
 import { ClamAVService } from './clamAvService';
@@ -8,7 +8,7 @@ import { VirusScan } from './virusScan';
 
 const scanner = new VirusScan(new ClamAVService(), new S3());
 
-export async function virusScan(event: unknown, context: Context): Promise<void> {
+export async function virusScan(event: unknown): Promise<void> {
   // TypeScript cannot infer correct properties since S3Event and ScheduledEvent have
   // almost no overlap. Therefore we cast here to get proper type hinting.
   const scheduledEvent = event as ScheduledEvent;
