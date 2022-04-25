@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
-/* eslint-disable unicorn/prevent-abbreviations */
-import type { ChildProcess, SpawnOptions } from 'child_process';
-import { spawn } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 import { stat, unlink } from 'fs/promises';
 import { createConnection } from 'net';
+
+import { getReturnCode, spawnAsync } from './utils';
 
 const DEFINITION_FILES = [
   'bytecode.cvd',
@@ -29,28 +29,6 @@ export interface IScanService {
   scan(filePath: string): Promise<boolean>
   getDefinitionsInfo(): { dir: string, files: string[] }
   updateDefinitions(): Promise<void>
-}
-
-function spawnAsync(
-  command: string,
-  args: string[] = [],
-  options?: SpawnOptions,
-): Promise<ChildProcess> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(
-      command,
-      args,
-      { stdio: 'inherit', ...options, env: { ...(options?.env ? options.env : {}), ...process.env } },
-    );
-    proc.on('error', (error) => reject(error));
-    proc.on('spawn', () => resolve(proc));
-  });
-}
-
-function getReturnCode(childProcess: ChildProcess): Promise<number | null> {
-  return new Promise((resolve) => {
-    childProcess.on('close', (code) => resolve(code));
-  });
 }
 
 export class ClamAVService implements IScanService {
