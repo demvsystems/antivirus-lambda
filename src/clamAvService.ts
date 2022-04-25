@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import type { ChildProcess, SpawnOptions } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { unlink } from 'fs/promises';
 import { isFile } from 'fspromises-toolbox';
 import { createConnection } from 'net';
@@ -21,7 +21,7 @@ import { getReturnCode, spawnAsync } from './utils';
 export interface IScanService {
   scan(filePath: string): Promise<boolean>
   getDefinitionsInfo(): { dir: string, files: string[] }
-  updateDefinitions(): Promise<void>
+  updateDefinitions(): Promise<number | null>
 }
 
 export class ClamAVService implements IScanService {
@@ -46,10 +46,6 @@ export class ClamAVService implements IScanService {
     return returncode === 0;
   }
 
-  async updateDefinitions(): Promise<void> {
-    await this.freshclam();
-  }
-
   getDefinitionsInfo(): { dir: string, files: string[] } {
     return {
       dir: this.definitionsDirectory,
@@ -72,7 +68,7 @@ export class ClamAVService implements IScanService {
     ]));
   }
 
-  private async freshclam(): Promise<number | null> {
+  public async updateDefinitions(): Promise<number | null> {
     return getReturnCode(await spawnAsync(
       FRESHCLAM_BIN,
       [

@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 import type S3 from 'aws-sdk/clients/s3';
-import {
-  createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync,
-} from 'fs';
+import { unlink, writeFile } from 'fs/promises';
+import { readDeep } from 'fspromises-toolbox';
 
 import { IScanService } from './clamAvService';
+import { directoryExistsIsNotEmpty, mkdirIfNotExists } from './utils';
 
 const { DEFINITIONS_BUCKET = '' } = process.env;
 
@@ -12,7 +12,7 @@ export interface IVirusScan {
   scan(key: string, bucket: string): Promise<void>
   refreshDefinitions(): Promise<void>
   fetchDefinitions(): Promise<void>
-  definitionsAvailable(): boolean
+  definitionsAvailable(): Promise<boolean>
 }
 
 export class VirusScan implements IVirusScan {
@@ -48,7 +48,7 @@ export class VirusScan implements IVirusScan {
     } catch (error) {
       console.error(`Scanning file '${key}' failed:\n\n${error}`);
     } finally {
-      unlinkSync(filePath);
+      await unlink(filePath);
     }
   }
 
@@ -57,9 +57,7 @@ export class VirusScan implements IVirusScan {
 
     const { dir } = this.scanService.getDefinitionsInfo();
 
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
+    await mkdirIfNotExists(dir);
 
     try {
       await this.scanService.updateDefinitions();
@@ -75,21 +73,14 @@ export class VirusScan implements IVirusScan {
 
     const { dir, files } = this.scanService.getDefinitionsInfo();
 
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
+    await mkdirIfNotExists(dir);
 
     try {
       await Promise.all(
-        files.map((file) => new Promise<void>((resolve, reject) => {
-          const writeStream = createWriteStream(`${dir}/${file}`);
-          const readStream = this.s3.getObject({ Bucket: DEFINITIONS_BUCKET, Key: file }).createReadStream();
-
-          readStream.on('end', () => resolve());
-          readStream.on('error', (error) => reject(error));
-
-          readStream.pipe(writeStream);
-        })),
+        files.map(async (file) => {
+          const readFile = await this.s3.getObject({ Bucket: DEFINITIONS_BUCKET, Key: file }).promise();
+          return writeFile(`${dir}/${file}`, readFile);
+        }),
       );
     } catch (error) {
       console.error(`Fetching virus definitions failed:\n\n${error}`);
@@ -102,15 +93,19 @@ export class VirusScan implements IVirusScan {
   async uploadDefinitions(): Promise<void> {
     const { dir } = this.scanService.getDefinitionsInfo();
 
+    const files = await readDeep(dir);
+
     await Promise.all(
-      readdirSync(dir)
-        .map(
-          (file) => this.s3.putObject(
-            {
-              Bucket: DEFINITIONS_BUCKET, Key: file, Body: readFileSync(`${dir}/${file}`), ACL: 'public-read',
-            },
-          ).promise(),
-        ),
+      files.map(
+        (file) => this.s3.putObject(
+          {
+            Bucket: DEFINITIONS_BUCKET,
+            Key: file.name,
+            Body: file.content,
+            ACL: 'public-read',
+          },
+        ).promise(),
+      ),
     );
   }
 
@@ -140,17 +135,13 @@ export class VirusScan implements IVirusScan {
       })
       .promise();
 
-    writeFileSync(path, s3Object.Body);
+    await writeFile(path, s3Object.Body);
 
     return path;
   }
 
-  definitionsAvailable(): boolean {
+  async definitionsAvailable(): Promise<boolean> {
     const { dir } = this.scanService.getDefinitionsInfo();
-    try {
-      return existsSync(dir) && readdirSync(dir).length > 0;
-    } catch {
-      return false;
-    }
+    return directoryExistsIsNotEmpty(dir);
   }
 }
