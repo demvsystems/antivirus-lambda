@@ -1,7 +1,5 @@
 /* eslint-disable no-console */
-/* eslint-disable unicorn/prevent-abbreviations */
 import type { ChildProcess, SpawnOptions } from 'child_process';
-import { spawn } from 'child_process';
 import { unlink } from 'fs/promises';
 import { isFile } from 'fspromises-toolbox';
 import { createConnection } from 'net';
@@ -12,48 +10,26 @@ import {
   CLAMD_SOCKET,
   CLAMDSCAN_BIN,
   CLAMSCAN_BIN,
-  // DEFINITION_FILES,
+  DEFINITION_FILES,
   DEFINITIONS_DIR,
   FRESHCLAM_BIN,
   FRESHCLAM_CONFIG,
   LD_LIBRARY_PATH,
 } from './constants';
+import { getReturnCode, spawnAsync } from './utils';
 
-export interface IClamAVService {
-  clamscan(filePath: string): Promise<number | null>
-  clamdscan(filePath: string): Promise<number | null>
-  freshclam(): Promise<number | null>
-  startClamd(): Promise<number>
+export interface IScanService {
+  scan(filePath: string): Promise<boolean>
+  getDefinitionsInfo(): { dir: string, files: string[] }
+  updateDefinitions(): Promise<void>
 }
 
-function spawnAsync(
-  command: string,
-  args: string[] = [],
-  options?: SpawnOptions,
-): Promise<ChildProcess> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(
-      command,
-      args,
-      { stdio: 'inherit', ...options, env: { ...(options?.env ? options.env : {}), ...process.env } },
-    );
-    proc.on('error', (error) => reject(error));
-    proc.on('spawn', () => resolve(proc));
-  });
-}
-
-function getReturnCode(childProcess: ChildProcess): Promise<number | null> {
-  return new Promise((resolve) => {
-    childProcess.on('close', (code) => resolve(code));
-  });
-}
-
-export class ClamAVService implements IClamAVService {
+export class ClamAVService implements IScanService {
   private clamdChildProcess: ChildProcess | null = null;
 
   constructor(
     private useClamd: boolean = true,
-    // private definitionFiles: string[] = DEFINITION_FILES,
+    private definitionFiles: string[] = DEFINITION_FILES,
     private definitionsDirectory: string = DEFINITIONS_DIR,
     private freshclamConfig: string = FRESHCLAM_CONFIG,
     private clamdConfig: string = CLAMD_CONFIG,
@@ -70,43 +46,48 @@ export class ClamAVService implements IClamAVService {
     return returncode === 0;
   }
 
-  async clamscan(filePath: string): Promise<number | null> {
-    return getReturnCode(
-      await spawnAsync(CLAMSCAN_BIN, [
-        `--database=${this.definitionsDirectory}`,
-        filePath,
-      ]),
-    );
+  async updateDefinitions(): Promise<void> {
+    await this.freshclam();
   }
 
-  async clamdscan(filePath: string): Promise<number | null> {
-    return getReturnCode(
-      await spawnAsync(CLAMDSCAN_BIN, [
-        '--stdout',
-        `--config-file=${this.clamdConfig}`,
-        filePath,
-      ]),
-    );
+  getDefinitionsInfo(): { dir: string, files: string[] } {
+    return {
+      dir: this.definitionsDirectory,
+      files: this.definitionFiles,
+    };
   }
 
-  async freshclam(): Promise<number | null> {
-    return getReturnCode(
-      await spawnAsync(
-        FRESHCLAM_BIN,
-        [
-          `--config-file=${this.freshclamConfig}`,
-          `--datadir=${this.definitionsDirectory}`,
-        ],
-        {
-          env: {
-            LD_LIBRARY_PATH,
-          },
+  private async clamscan(filePath: string): Promise<number | null> {
+    return getReturnCode(await spawnAsync(CLAMSCAN_BIN, [
+      `--database=${this.definitionsDirectory}`,
+      filePath,
+    ]));
+  }
+
+  private async clamdscan(filePath: string): Promise<number | null> {
+    return getReturnCode(await spawnAsync(CLAMDSCAN_BIN, [
+      '--stdout',
+      `--config-file=${this.clamdConfig}`,
+      filePath,
+    ]));
+  }
+
+  private async freshclam(): Promise<number | null> {
+    return getReturnCode(await spawnAsync(
+      FRESHCLAM_BIN,
+      [
+        `--config-file=${this.freshclamConfig}`,
+        `--datadir=${this.definitionsDirectory}`,
+      ],
+      {
+        env: {
+          LD_LIBRARY_PATH,
         },
-      ),
-    );
+      },
+    ));
   }
 
-  public static async isClamdRunning(): Promise<boolean> {
+  private static async isClamdRunning(): Promise<boolean> {
     const clamdSocketExists = await isFile(CLAMD_SOCKET);
     if (!clamdSocketExists) {
       console.log(`${CLAMD_SOCKET} doesn't exist`);
@@ -150,7 +131,7 @@ export class ClamAVService implements IClamAVService {
     });
   }
 
-  public async startClamd(): Promise<number> {
+  private async startClamd(): Promise<number> {
     if (this.clamdChildProcess !== null) {
       this.clamdChildProcess.kill('SIGTERM');
     }

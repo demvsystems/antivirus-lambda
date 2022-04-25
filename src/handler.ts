@@ -1,6 +1,5 @@
-/* eslint-disable no-await-in-loop */
 /* eslint-disable no-console */
-/* eslint-disable no-restricted-syntax */
+
 import type { Context, S3Event, ScheduledEvent } from 'aws-lambda';
 import S3 from 'aws-sdk/clients/s3';
 // import {
@@ -13,6 +12,9 @@ import { writeFile } from 'fs/promises';
 import { ClamAVService } from './clamAvService';
 import { DEFINITION_FILES, DEFINITIONS_DIR } from './constants';
 import { directoryExistsIsNotEmpty } from './utils';
+import { VirusScan } from './virusScan';
+
+const scanner = new VirusScan(new ClamAVService(), new S3());
 
 const s3 = new S3();
 
@@ -184,9 +186,11 @@ export async function virusScan(event: unknown, context: Context): Promise<void>
     }
 
     if (isUpdater) {
-      await updateDefinitions();
+      await scanner.refreshDefinitions();
     }
   } else if (s3Event.Records) {
-    await scan(s3Event, context);
+    await Promise.all(s3Event.Records
+      .filter((record) => !!record.s3)
+      .map((record) => scanner.scan(record.s3.object.key, record.s3.bucket.name)));
   }
 }
