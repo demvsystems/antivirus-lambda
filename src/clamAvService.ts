@@ -28,7 +28,7 @@ const LD_LIBRARY_PATH = './lib';
 export interface IScanService {
   scan(filePath: string): Promise<boolean>
   getDefinitionsInfo(): { dir: string, files: string[] }
-  updateDefinitions(): Promise<number | null>
+  updateDefinitions(): Promise<void>
 }
 
 export class ClamAVService implements IScanService {
@@ -53,6 +53,10 @@ export class ClamAVService implements IScanService {
     return returncode === 0;
   }
 
+  async updateDefinitions(): Promise<void> {
+    await this.freshclam();
+  }
+
   getDefinitionsInfo(): { dir: string, files: string[] } {
     return {
       dir: this.definitionsDirectory,
@@ -75,7 +79,7 @@ export class ClamAVService implements IScanService {
     ]));
   }
 
-  public async updateDefinitions(): Promise<number | null> {
+  public async freshclam(): Promise<number | null> {
     return getReturnCode(await spawnAsync(
       FRESHCLAM_BIN,
       [
