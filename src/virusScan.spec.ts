@@ -1,9 +1,15 @@
+/* eslint-disable unicorn/prevent-abbreviations */
+import { readdirSync, readFileSync } from 'fs';
+
 import { VirusScan } from './virusScan';
 
 jest.mock('fs', () => ({
   unlinkSync: jest.fn(),
   existsSync: jest.fn().mockReturnValue(true),
   mkdirSync: jest.fn(),
+  createWriteStream: jest.fn(),
+  readdirSync: jest.fn(),
+  readFileSync: jest.fn(),
 }));
 
 describe('VirusScan', () => {
@@ -11,9 +17,20 @@ describe('VirusScan', () => {
   const putObject = jest.fn().mockReturnThis();
   const putObjectTagging = jest.fn().mockReturnThis();
   const promise = jest.fn();
+  // TODO simplify this mock setup
+  const createReadStream = jest.fn().mockReturnThis();
+  const pipe = jest.fn();
+  const on = jest.fn();
 
   const S3Mock = jest.fn().mockImplementation(() => ({
-    getObject, putObject, putObjectTagging, promise,
+    getObject,
+    putObject,
+    putObjectTagging,
+    promise,
+    // TODO simplify this mock setup
+    createReadStream,
+    pipe,
+    on,
   }));
 
   const scan = jest.fn();
@@ -24,7 +41,6 @@ describe('VirusScan', () => {
     scan, getDefinitionsInfo, updateDefinitions,
   }));
 
-  // const fetchDefinitionsMock = jest.spyOn(VirusScan.prototype, 'fetchDefinitions').mockReturnValue()
   let virusScan: VirusScan;
   let fetchBucketFile: jest.SpyInstance;
   let definitionsAvailable: jest.SpyInstance;
@@ -107,11 +123,63 @@ describe('VirusScan', () => {
   });
 
   describe('fetchDefinitions', () => {
-    it.todo('fetches definitions from definitions bucket');
+    const DEFINITIONS_BUCKET = 'definitions-bucket';
+    const origEnv = process.env;
+    beforeEach(() => {
+      process.env.DEFINITIONS_BUCKET = DEFINITIONS_BUCKET;
+    });
+
+    afterEach(() => {
+      process.env = origEnv;
+    });
+
+    it('fetches definitions from definitions bucket', async () => {
+      getDefinitionsInfo.mockReturnValue({
+        dir: '/tmp/defs',
+        files: ['daily.cvd', 'main.cvd', 'bytecode.cvd'],
+      });
+
+      // TODO simplify mock setup for writeStream and readStream
+      // For now we only care about the happy path
+      on.mockImplementation((event, handler) => {
+        if (event === 'end') handler();
+        return jest.fn().mockReturnThis();
+      });
+
+      await virusScan.fetchDefinitions();
+
+      expect(getObject).toHaveBeenCalledTimes(3);
+      // TODO fix setting process.env. At the moment we set it at the top of the module
+      // and that prevents us from setting process.env for every test as the assignment
+      // takes place directly after importing the module under test
+      expect(getObject).toHaveBeenLastCalledWith({ Bucket: expect.any(String), Key: 'bytecode.cvd' });
+    });
   });
 
   describe('uploadDefinitions', () => {
-    it.todo('uploads definitions to definitions bucket');
+    const mockedReaddirSync = readdirSync as jest.MockedFunction<typeof readdirSync>;
+    const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
+
+    it('uploads definitions to definitions bucket', async () => {
+      const files = ['daily.cvd', 'main.cvd', 'bytecode.cvd'];
+
+      getDefinitionsInfo.mockReturnValue({
+        dir: '/tmp/defs',
+        files,
+      });
+
+      // @ts-ignore as we cannot convert to Dirent type
+      mockedReaddirSync.mockReturnValue(files);
+      mockedReadFileSync.mockReturnValue('file-blob');
+
+      await virusScan.uploadDefinitions();
+
+      expect(readFileSync).toHaveBeenLastCalledWith('/tmp/defs/bytecode.cvd');
+      expect(putObject).toHaveBeenCalledTimes(3);
+      expect(putObject).toHaveBeenLastCalledWith({
+        Bucket: expect.any(String), Key: 'bytecode.cvd', Body: 'file-blob', ACL: 'public-read',
+      });
+    });
   });
 
   describe('tagBucketFile', () => {
