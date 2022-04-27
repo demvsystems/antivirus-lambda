@@ -1,5 +1,5 @@
 /* eslint-disable unicorn/prevent-abbreviations */
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync } from 'fs';
 
 import { VirusScan } from './virusScan';
 
@@ -10,6 +10,7 @@ jest.mock('fs', () => ({
   createWriteStream: jest.fn(),
   readdirSync: jest.fn(),
   readFileSync: jest.fn(),
+  writeFileSync: jest.fn(),
 }));
 
 describe('VirusScan', () => {
@@ -183,10 +184,55 @@ describe('VirusScan', () => {
   });
 
   describe('tagBucketFile', () => {
-    it.todo('tags bucket file depending on status');
+    it.each([
+      { status: 'clean' },
+      { status: 'dirty' },
+    ])('tags bucket file depending on status ($status))', async ({ status }) => {
+      await virusScan.tagBucketFile('key', 'bucket', status as 'clean' | 'dirty');
+
+      expect(putObjectTagging).toHaveBeenCalledWith({
+        Bucket: 'bucket',
+        Key: 'key',
+        Tagging: {
+          TagSet: [
+            {
+              Key: 'av-status',
+              Value: status,
+            },
+          ],
+        },
+      });
+    });
   });
 
   describe('fetchBucketFile', () => {
-    it.todo('fetches file from bucket');
+    const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
+    const fileContent = 'blob-of-bucket-file';
+
+    beforeEach(() => {
+      fetchBucketFile.mockRestore();
+      promise.mockResolvedValue({ Body: fileContent });
+    });
+
+    it('fetches file from bucket', async () => {
+      await virusScan.fetchBucketFile(fileToScan, 'bucket');
+
+      expect(getObject).toHaveBeenCalledWith({
+        Bucket: 'bucket',
+        Key: fileToScan,
+      });
+    });
+
+    it('writes fetched file to disk', async () => {
+      await virusScan.fetchBucketFile(fileToScan, 'bucket');
+
+      expect(mockedWriteFileSync).toHaveBeenCalledWith(`/tmp/${fileToScan}`, fileContent);
+    });
+
+    it('returns path to file', async () => {
+      const pathToFile = await virusScan.fetchBucketFile(fileToScan, 'bucket');
+
+      expect(pathToFile).toBe(`/tmp/${fileToScan}`);
+    });
   });
 });
