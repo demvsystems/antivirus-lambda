@@ -60,7 +60,7 @@ describe('VirusScan', () => {
     definitionsAvailable = jest.spyOn(VirusScan.prototype, 'definitionsAvailable').mockReturnValue(true);
 
     // We set all files to clean by default
-    scan.mockResolvedValue(false);
+    scan.mockResolvedValue(true);
   });
 
   afterEach(() => {
