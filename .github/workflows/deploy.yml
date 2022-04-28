@@ -69,7 +69,7 @@ jobs:
       - if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci --no-audit --prefer-offline
 
-      - run: npm test --silent
+      - run: npm run test -- --silent
 
   deploy:
     name: 'Deploy'

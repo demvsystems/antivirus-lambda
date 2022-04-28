@@ -33,6 +33,6 @@
     "watch": "tsc -p tsconfig.build.json --watch",
     "lint": "eslint --cache 'src/**/*.{js,ts}'",
     "lint:fix": "eslint --cache 'src/**/*.{js,ts}' --fix",
-    "test": "jest handler.test.js"
+    "test": "jest"
   }
 }
