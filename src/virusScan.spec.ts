@@ -14,24 +14,29 @@ jest.mock('fs', () => ({
 }));
 
 describe('VirusScan', () => {
-  const getObject = jest.fn().mockReturnThis();
-  const putObject = jest.fn().mockReturnThis();
-  const putObjectTagging = jest.fn().mockReturnThis();
   const promise = jest.fn();
-  // TODO simplify this mock setup
-  const createReadStream = jest.fn().mockReturnThis();
-  const pipe = jest.fn();
+
   const on = jest.fn();
+  const createReadStream = jest.fn(() => ({
+    pipe: jest.fn(),
+    on,
+  }));
+
+  const getObject = jest.fn(() => ({
+    promise,
+    createReadStream,
+  }));
+  const putObject = jest.fn(() => ({
+    promise,
+  }));
+  const putObjectTagging = jest.fn(() => ({
+    promise,
+  }));
 
   const S3Mock = jest.fn().mockImplementation(() => ({
     getObject,
     putObject,
     putObjectTagging,
-    promise,
-    // TODO simplify this mock setup
-    createReadStream,
-    pipe,
-    on,
   }));
 
   const scan = jest.fn();
@@ -140,11 +145,9 @@ describe('VirusScan', () => {
         files: ['daily.cvd', 'main.cvd', 'bytecode.cvd'],
       });
 
-      // TODO simplify mock setup for writeStream and readStream
       // For now we only care about the happy path
       on.mockImplementation((event, handler) => {
         if (event === 'end') handler();
-        return jest.fn().mockReturnThis();
       });
 
       await virusScan.fetchDefinitions();
