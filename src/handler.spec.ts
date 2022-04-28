@@ -1,129 +1,43 @@
-const { virusScan } = require('./handler');
+/* eslint-disable unicorn/prevent-abbreviations */
+import { virusScan } from './handler';
+import { mockedFn } from './testUtils';
+import { VirusScan } from './virusScan';
 
-var mockPutObjectTagging;
-var mockPromise;
-
-jest.mock('aws-sdk', () => {
-  mockPromise = jest.fn();
-  mockPutObjectTagging = jest.fn().mockReturnThis();
-
-  return {
-    S3: jest.fn().mockReturnValue({
-      getObject: jest.fn().mockReturnThis(),
-      putObjectTagging: mockPutObjectTagging,
-      promise: mockPromise,
-    })
-  }
-});
-
-var mockReadFileSync;
-var mockWriteFileSync;
-var mockUnlinkSync;
-
-jest.mock('fs', () => {
-  mockReadFileSync = jest.fn();
-  mockWriteFileSync = jest.fn();
-  mockUnlinkSync = jest.fn();
-
-  return {
-    readFileSync: mockReadFileSync,
-    writeFileSync: mockWriteFileSync, 
-    unlinkSync: mockUnlinkSync
-  }
-});
-
-var mockExecSync;
-
-jest.mock('child_process', () => {
-  mockExecSync = jest.fn();
-
-  return {
-    execSync: mockExecSync,
-  }
-})
+jest.mock('./virusScan');
 
 describe('handler.virusScan', () => {
-  let mockValidEvent;
+  it('logs warmed for warmer event and returns', async () => {
+    const log = jest.spyOn(console, 'log');
 
-  beforeAll(() => {
-    // console.log = jest.fn();
+    const returnValue = await virusScan({ source: 'serverless-plugin-warmup' });
 
-    mockValidEvent = {
-      Records: [
-        {
-          s3: {
-            bucket: { name: 'bucket-name' },
-            object: { key: 'file-to-scan.jpeg' },
+    expect(log).toHaveBeenCalledWith('warmed');
+    expect(returnValue).toBeUndefined();
+  });
+
+  it('refreshes definitions for updater event', async () => {
+    await virusScan({ resources: ['update-virus-definitions-schedule'] });
+
+    expect(mockedFn(VirusScan.prototype.refreshDefinitions)).toHaveBeenCalled();
+  });
+
+  it('scans bucket file for a s3 event with an existing s3 Record', async () => {
+    const fileToScan = 'fileToScan.txt';
+    const bucketName = 'bucket-name';
+
+    await virusScan({
+      Records: [{
+        s3: {
+          object: {
+            key: fileToScan,
+          },
+          bucket: {
+            name: bucketName,
           },
         },
-      ]
-    };
-  });
-
-  it('calls an event with no event.Records', async () => {
-    const event = {};
-    await virusScan(event);
-
-    // expect(console.log).toHaveBeenCalled();
-    // expect(console.log).toHaveBeenCalledWith('Not an S3 event invocation!');
-    expect(mockWriteFileSync).not.toHaveBeenCalled();
-  });
-
-  it('calls an event with no event.Records[].s3', async () => {
-    const event = {
-      Records: [
-        {
-          notS3: { foo: 'bar' }
-        }
-      ]
-    };
-
-    await virusScan(event);
-
-    // expect(console.log).toHaveBeenCalled();
-    // expect(console.log).toHaveBeenCalledWith('Not an S3 Record!');
-    expect(mockWriteFileSync).not.toHaveBeenCalled();
-  });
-
-  it('calls with a clean file', async () => {
-    mockPromise.mockImplementationOnce(() => ({ Body: 'body' }));
-
-    await virusScan(mockValidEvent);
-
-    expect(mockExecSync).toHaveBeenCalledWith('clamscan /tmp/file-to-scan.jpeg');
-    expect(mockWriteFileSync).toHaveBeenCalledWith("/tmp/file-to-scan.jpeg", 'body');
-    expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/file-to-scan.jpeg');
-    expect(mockPutObjectTagging).toHaveBeenCalledWith({
-      'Bucket': 'bucket-name', 
-      'Key': 'file-to-scan.jpeg', 
-      'Tagging': {
-        'TagSet': [
-          {'Key': 'av-status', 'Value': 'clean'}
-        ]
-      }
-    });
-  });
-
-
-  it.only('calls with a virus file', async () => {
-    mockPromise.mockImplementationOnce(() => ({ Body: 'body' }));
-    mockExecSync.mockImplementationOnce(() => {
-      throw { code: 1 };
+      }],
     });
 
-    await virusScan(mockValidEvent);
-
-    expect(mockExecSync).toHaveBeenCalledWith('clamscan /tmp/file-to-scan.jpeg');
-    expect(mockWriteFileSync).toHaveBeenCalledWith("/tmp/file-to-scan.jpeg", 'body');
-    expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/file-to-scan.jpeg');
-    expect(mockPutObjectTagging).toHaveBeenCalledWith({
-      'Bucket': 'bucket-name', 
-      'Key': 'file-to-scan.jpeg', 
-      'Tagging': {
-        'TagSet': [
-          {'Key': 'av-status', 'Value': 'dirty'}
-        ]
-      }
-    });
+    expect(mockedFn(VirusScan.prototype.scan)).toHaveBeenCalledWith(fileToScan, bucketName);
   });
 });

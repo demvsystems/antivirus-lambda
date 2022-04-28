@@ -8,7 +8,7 @@ import { VirusScan } from './virusScan';
 
 const scanner = new VirusScan(new ClamAVService(), new S3());
 
-export async function virusScan(event: unknown, context: Context): Promise<void> {
+export async function virusScan(event: unknown, context?: Context): Promise<void> {
   // TypeScript cannot infer correct properties since S3Event and ScheduledEvent have
   // almost no overlap. Therefore we cast here to get proper type hinting.
   const scheduledEvent = event as ScheduledEvent;
@@ -29,8 +29,10 @@ export async function virusScan(event: unknown, context: Context): Promise<void>
       await scanner.refreshDefinitions();
     }
   } else if (s3Event.Records) {
-    await Promise.all(s3Event.Records
-      .filter((record) => !!record.s3)
-      .map((record) => scanner.scan(record.s3.object.key, record.s3.bucket.name)));
+    await Promise.all(
+      s3Event.Records
+        .filter((record) => !!record.s3)
+        .map((record) => scanner.scan(record.s3.object.key, record.s3.bucket.name)),
+    );
   }
 }
