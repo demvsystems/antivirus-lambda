@@ -1,6 +1,7 @@
 /* eslint-disable unicorn/prevent-abbreviations */
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 
+import { ClamAVService } from './clamAvService';
 import { VirusScan } from './virusScan';
 
 jest.mock('fs', () => ({
@@ -13,7 +14,10 @@ jest.mock('fs', () => ({
   writeFileSync: jest.fn(),
 }));
 
+jest.mock('./clamAvService');
+
 describe('VirusScan', () => {
+  // S3 mock setup
   const promise = jest.fn();
 
   const on = jest.fn();
@@ -33,39 +37,23 @@ describe('VirusScan', () => {
     promise,
   }));
 
-  const S3Mock = jest.fn().mockImplementation(() => ({
+  const S3 = jest.fn().mockImplementation(() => ({
     getObject,
     putObject,
     putObjectTagging,
   }));
 
-  const scan = jest.fn();
-  const getDefinitionsInfo = jest.fn();
-  const updateDefinitions = jest.fn();
+  // ClamAVService mock setup
+  const scan = ClamAVService.prototype.scan as jest.MockedFunction<typeof ClamAVService.prototype.scan>;
+  const getDefinitionsInfo = ClamAVService.prototype.getDefinitionsInfo as jest.MockedFunction<typeof ClamAVService.prototype.getDefinitionsInfo>;
+  const updateDefinitions = ClamAVService.prototype.updateDefinitions as jest.MockedFunction<typeof ClamAVService.prototype.updateDefinitions>;
 
-  const ClamAvServiceMock = jest.fn().mockImplementation(() => ({
-    scan, getDefinitionsInfo, updateDefinitions,
-  }));
-
+  // VirusScan related
   let virusScan: VirusScan;
-  let fetchBucketFile: jest.SpyInstance;
-  let definitionsAvailable: jest.SpyInstance;
-
   const fileToScan = 'testFile.txt';
 
   beforeEach(() => {
-    virusScan = new VirusScan(new ClamAvServiceMock(), new S3Mock());
-
-    getDefinitionsInfo.mockReturnValue({
-      dir: '/tmp/defs',
-      files: [],
-    });
-
-    fetchBucketFile = jest.spyOn(VirusScan.prototype, 'fetchBucketFile').mockResolvedValue(fileToScan);
-    definitionsAvailable = jest.spyOn(VirusScan.prototype, 'definitionsAvailable').mockReturnValue(true);
-
-    // We set all files to clean by default
-    scan.mockResolvedValue(true);
+    virusScan = new VirusScan(new ClamAVService(), new S3());
   });
 
   afterEach(() => {
@@ -74,6 +62,17 @@ describe('VirusScan', () => {
   });
 
   describe('scan', () => {
+    let fetchBucketFile: jest.SpyInstance;
+    let definitionsAvailable: jest.SpyInstance;
+
+    beforeEach(() => {
+      fetchBucketFile = jest.spyOn(VirusScan.prototype, 'fetchBucketFile').mockResolvedValue(fileToScan);
+      definitionsAvailable = jest.spyOn(VirusScan.prototype, 'definitionsAvailable').mockReturnValue(true);
+
+      // Set all files to be clean by default
+      scan.mockResolvedValue(true);
+    });
+
     it('fetches file from bucket', async () => {
       await virusScan.scan(fileToScan, 'bucket');
 
@@ -112,6 +111,11 @@ describe('VirusScan', () => {
     let uploadDefinitions: jest.SpyInstance;
 
     beforeEach(() => {
+      getDefinitionsInfo.mockReturnValue({
+        dir: '/tmp/defs',
+        files: ['daily.cvd', 'main.cvd', 'bytecode.cvd'],
+      });
+
       uploadDefinitions = jest.spyOn(VirusScan.prototype, 'uploadDefinitions').mockResolvedValue();
     });
 
@@ -213,7 +217,6 @@ describe('VirusScan', () => {
     const fileContent = 'blob-of-bucket-file';
 
     beforeEach(() => {
-      fetchBucketFile.mockRestore();
       promise.mockResolvedValue({ Body: fileContent });
     });
 
