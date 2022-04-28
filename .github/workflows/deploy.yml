@@ -2,17 +2,86 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   workflow_dispatch:
 
+env:
+  node: '14'
+  cache-version: 'v1'
+
 jobs:
-  deploy:
-    name: Deploy with serverless
+  lint:
+    name: 'Lint'
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
+
+      - uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          all_but_latest: true
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.node }}
+
+      - uses: actions/cache@v2
+        id: cache-node-modules
+        with:
+          path: node_modules
+          key: ${{ env.cache-version }}-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ env.cache-version }}-node-modules-
+
+      - if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci --no-audit --prefer-offline
+
+      - run: npm run lint
+
+  test:
+    name: 'Test'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          all_but_latest: true
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.node }}
+
+      - uses: actions/cache@v2
+        id: cache-node-modules
+        with:
+          path: node_modules
+          key: ${{ env.cache-version }}-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ env.cache-version }}-node-modules-
+
+      - if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci --no-audit --prefer-offline
+
+      - run: npm test --silent
+
+  deploy:
+    name: 'Deploy'
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - test
+
+    steps:
       # Prerequisites
-      - name: Checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -25,9 +94,14 @@ jobs:
           # With this the session doesn't need to be tagged
           role-skip-session-tagging: true
 
+      - uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          all_but_latest: true
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-node@v2
         with:
-          node-version: 14
+          node-version: ${{ env.node }}
 
       - uses: actions/cache@v2
         id: cache-node-modules
