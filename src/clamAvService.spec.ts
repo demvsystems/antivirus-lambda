@@ -1,8 +1,10 @@
+/* eslint-disable unicorn/prevent-abbreviations */
 import { ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 import { unlink } from 'fs/promises';
 
 import { ClamAVService } from './clamAvService';
+import { mockedFn } from './testUtils';
 import { getReturnCode, spawnAsync } from './utils';
 
 jest.mock('./utils', () => {
@@ -24,10 +26,10 @@ jest.mock('fs/promises', () => ({
 }));
 
 describe('ClamAvService', () => {
-  const mockedGetReturnCode = getReturnCode as jest.MockedFunction<typeof getReturnCode>;
-  const mockedSpawnAsync = spawnAsync as jest.MockedFunction<typeof spawnAsync>;
-  const mockedExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
-  const mockedUnlink = unlink as jest.MockedFunction<typeof unlink>;
+  const mockedGetReturnCode = mockedFn(getReturnCode);
+  const mockedSpawnAsync = mockedFn(spawnAsync);
+  const mockedExistsSync = mockedFn(existsSync);
+  const mockedUnlink = mockedFn(unlink);
   let isClamdRunningMock: jest.SpyInstance<Promise<boolean>>;
 
   beforeEach(() => {

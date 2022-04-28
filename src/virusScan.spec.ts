@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
 
 import { ClamAVService } from './clamAvService';
+import { mockedFn } from './testUtils';
 import { VirusScan } from './virusScan';
 
 jest.mock('fs', () => ({
@@ -44,9 +45,9 @@ describe('VirusScan', () => {
   }));
 
   // ClamAVService mock setup
-  const scan = ClamAVService.prototype.scan as jest.MockedFunction<typeof ClamAVService.prototype.scan>;
-  const getDefinitionsInfo = ClamAVService.prototype.getDefinitionsInfo as jest.MockedFunction<typeof ClamAVService.prototype.getDefinitionsInfo>;
-  const updateDefinitions = ClamAVService.prototype.updateDefinitions as jest.MockedFunction<typeof ClamAVService.prototype.updateDefinitions>;
+  const scan = mockedFn(ClamAVService.prototype.scan);
+  const getDefinitionsInfo = mockedFn(ClamAVService.prototype.getDefinitionsInfo);
+  const updateDefinitions = mockedFn(ClamAVService.prototype.updateDefinitions);
 
   // VirusScan related
   let virusScan: VirusScan;
@@ -165,8 +166,8 @@ describe('VirusScan', () => {
   });
 
   describe('uploadDefinitions', () => {
-    const mockedReaddirSync = readdirSync as jest.MockedFunction<typeof readdirSync>;
-    const mockedReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
+    const mockedReaddirSync = mockedFn(readdirSync);
+    const mockedReadFileSync = mockedFn(readFileSync);
 
     it('uploads definitions to definitions bucket', async () => {
       const files = ['daily.cvd', 'main.cvd', 'bytecode.cvd'];
@@ -213,7 +214,7 @@ describe('VirusScan', () => {
   });
 
   describe('fetchBucketFile', () => {
-    const mockedWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
+    const mockedWriteFileSync = mockedFn(writeFileSync);
     const fileContent = 'blob-of-bucket-file';
 
     beforeEach(() => {
