@@ -16,14 +16,10 @@ export interface IVirusScan {
 }
 
 export class VirusScan implements IVirusScan {
-  private scanService: IScanService;
-
-  private s3: S3;
-
-  constructor(scanService: IScanService, s3: S3) {
-    this.scanService = scanService;
-    this.s3 = s3;
-  }
+  constructor(
+    private scanService: IScanService,
+    private s3: S3,
+  ) {}
 
   async scan(key: string, bucket: string): Promise<void> {
     const filePath = await this.fetchBucketFile(key, bucket);

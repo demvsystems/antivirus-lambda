@@ -32,32 +32,15 @@ export interface IScanService {
 }
 
 export class ClamAVService implements IScanService {
-  private useClamd: boolean;
-
-  private definitionFiles: string[];
-
-  private definitionsDirectory: string;
-
-  private freshclamConfig: string;
-
-  private clamdConfig: string;
-
-  private clamdChildProcess: ChildProcess | null;
+  private clamdChildProcess: ChildProcess | null = null;
 
   constructor(
-    useClamd = true,
-    definitionFiles = DEFINITION_FILES,
-    definitionsDirectory = DEFINITIONS_DIR,
-    freshclamConfig = FRESHCLAM_CONFIG,
-    clamdConfig = CLAMD_CONFIG,
-  ) {
-    this.useClamd = useClamd;
-    this.definitionFiles = definitionFiles;
-    this.definitionsDirectory = definitionsDirectory;
-    this.freshclamConfig = freshclamConfig;
-    this.clamdConfig = clamdConfig;
-    this.clamdChildProcess = null;
-  }
+    private useClamd: boolean = true,
+    private definitionFiles: string[] = DEFINITION_FILES,
+    private definitionsDirectory: string = DEFINITIONS_DIR,
+    private freshclamConfig: string = FRESHCLAM_CONFIG,
+    private clamdConfig: string = CLAMD_CONFIG,
+  ) {}
 
   async scan(filePath: string): Promise<boolean> {
     const method = this.useClamd ? this.clamdscan : this.clamscan;
