@@ -19,6 +19,7 @@ RUN yum update -y && amazon-linux-extras install epel -y && yum install -y \
 
 RUN yumdownloader -x \*i686 --archlist=x86_64 \
     clamav \
+    clamav-scanner-systemd \
     clamav-lib \
     clamav-update \
     json-c \
@@ -29,31 +30,44 @@ RUN yumdownloader -x \*i686 --archlist=x86_64 \
     xz-libs \
     libprelude \
     gnutls \
-    nettle
+    nettle \
+    systemd-libs \
+    elfutils-libs \
+    lz4
 
-RUN rpm2cpio clamav-0*.rpm | cpio -vimd
-RUN rpm2cpio clamav-lib*.rpm | cpio -vimd
-RUN rpm2cpio clamav-update*.rpm | cpio -vimd
-RUN rpm2cpio json-c*.rpm | cpio -vimd
-RUN rpm2cpio pcre*.rpm | cpio -vimd
-RUN rpm2cpio libtool-ltdl*.rpm | cpio -vimd
-RUN rpm2cpio libxml2*.rpm | cpio -vimd
-RUN rpm2cpio bzip2-libs*.rpm | cpio -vimd
-RUN rpm2cpio xz-libs*.rpm | cpio -vimd
-RUN rpm2cpio libprelude*.rpm | cpio -vimd
-RUN rpm2cpio gnutls*.rpm | cpio -vimd
-RUN rpm2cpio nettle*.rpm | cpio -vimd
+RUN for p in \
+    clamav-0*.rpm \
+    clamd-0*.rpm \
+    clamav-lib*.rpm \
+    clamav-update*.rpm \
+    json-c*.rpm \
+    pcre*.rpm \
+    libtool-ltdl*.rpm \
+    libxml2*.rpm \
+    bzip2-libs*.rpm \
+    xz-libs*.rpm \
+    libprelude*.rpm \
+    gnutls*.rpm \
+    nettle*.rpm \
+    systemd-libs*.rpm \
+    elfutils-libs*.rpm \
+    lz4*.rpm \
+    ; do rpm2cpio "$p" | cpio -vimd; done && \
+    rm -rf *.rpm
 
 RUN mkdir -p bin && \
     mkdir -p lib && \
     mkdir -p var/lib/clamav && \
     chmod -R 777 var/lib/clamav
 
-COPY ./freshclam.conf .
+COPY ./freshclam.conf ./bin/freshclam.conf
+COPY ./clamd.conf ./bin/scan.conf
 
-RUN cp usr/bin/clamscan usr/bin/freshclam bin/. && \
-    cp usr/lib64/* lib/. && \
-    cp freshclam.conf bin/freshclam.conf
+RUN cp usr/bin/clamscan \
+    usr/bin/clamdscan \
+    usr/sbin/clamd \
+    usr/bin/freshclam bin/. && \
+    cp -r usr/lib64/* lib/.
 
 RUN groupadd clamav && \
     useradd -g clamav -s /bin/false -c "Clam Antivirus" clamav && \
@@ -63,6 +77,6 @@ FROM public.ecr.aws/lambda/nodejs:14
 
 COPY --from=layer-image /home/build ./
 
-COPY dist/handler.js ./
+COPY dist/handler.js dist/clamAvService.js dist/virusScan.js dist/utils.js ./
 
 CMD ["handler.virusScan"]
