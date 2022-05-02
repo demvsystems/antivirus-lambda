@@ -10,8 +10,6 @@ custom:
   warmup:
     warmer:
       enabled: true
-      events:
-        - schedule: rate(15 minutes)
 
   prune:
     automatic: true
