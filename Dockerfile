@@ -35,23 +35,25 @@ RUN yumdownloader -x \*i686 --archlist=x86_64 \
     elfutils-libs \
     lz4
 
-RUN rpm2cpio clamav-0*.rpm | cpio -vimd
-RUN rpm2cpio clamd-0*.rpm | cpio -vimd
-RUN rpm2cpio clamav-lib*.rpm | cpio -vimd
-RUN rpm2cpio clamav-update*.rpm | cpio -vimd
-RUN rpm2cpio json-c*.rpm | cpio -vimd
-RUN rpm2cpio pcre*.rpm | cpio -vimd
-RUN rpm2cpio libtool-ltdl*.rpm | cpio -vimd
-RUN rpm2cpio libxml2*.rpm | cpio -vimd
-RUN rpm2cpio bzip2-libs*.rpm | cpio -vimd
-RUN rpm2cpio xz-libs*.rpm | cpio -vimd
-RUN rpm2cpio libprelude*.rpm | cpio -vimd
-RUN rpm2cpio gnutls*.rpm | cpio -vimd
-RUN rpm2cpio nettle*.rpm | cpio -vimd
-RUN rpm2cpio systemd-libs*.rpm | cpio -vimd
-RUN rpm2cpio elfutils-libs*.rpm | cpio -idmv
-RUN rpm2cpio lz4*.rpm | cpio -idmv
-RUN rm -rf *.rpm
+RUN for p in \
+    clamav-0*.rpm \
+    clamd-0*.rpm \
+    clamav-lib*.rpm \
+    clamav-update*.rpm \
+    json-c*.rpm \
+    pcre*.rpm \
+    libtool-ltdl*.rpm \
+    libxml2*.rpm \
+    bzip2-libs*.rpm \
+    xz-libs*.rpm \
+    libprelude*.rpm \
+    gnutls*.rpm \
+    nettle*.rpm \
+    systemd-libs*.rpm \
+    elfutils-libs*.rpm \
+    lz4*.rpm \
+    ; do rpm2cpio "$p" | cpio -vimd; done && \
+    rm -rf *.rpm
 
 RUN mkdir -p bin && \
     mkdir -p lib && \
